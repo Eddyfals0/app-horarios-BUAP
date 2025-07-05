@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizador de Horarios por Texto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .schedule-card.excelente { border-left-color: #8b5cf6; } /* Morado */
+        .schedule-card.bueno { border-left-color: #17a2b8; }
+        .schedule-card.regular { border-left-color: #fd7e14; }
+        .schedule-card.malo { border-left-color: #dc3545; }
+        .loader { border-top-color: #3498db; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+
+    <!-- Modal de Instrucciones -->
+    <div id="instructions-modal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-2xl max-w-2xl w-full">
+            <h2 class="text-3xl font-bold text-blue-800 dark:text-blue-400 mb-4">¡Bienvenido al Optimizador de Horarios!</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">Sigue estos sencillos pasos para encontrar tu horario ideal:</p>
+            <div class="space-y-4 text-left">
+                <div>
+                    <h3 class="font-bold text-lg text-gray-900 dark:text-white">Paso 1: Prepara tu texto</h3>
+                    <p class="text-sm text-gray-700 dark:text-gray-400">Para evitar errores, te recomendamos convertir tu PDF de horarios a un archivo de Word. Luego, copia únicamente las líneas de las materias que te interesan.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-gray-900 dark:text-white">Paso 2: Pega en el formato correcto</h3>
+                    <p class="text-sm text-gray-700 dark:text-gray-400">Asegúrate de que cada línea tenga el siguiente formato. Aquí tienes un ejemplo claro:</p>
+                    <pre class="bg-gray-100 dark:bg-gray-700 dark:text-gray-300 p-3 rounded-md text-xs mt-2 overflow-x-auto"><code>11111 MAT101 Algebra Basica OO1 L 0700-0859 PROFESOR - EJEMPLO AULA1
+11111 MAT101 Algebra Basica OO1 M 0700-0859 PROFESOR - EJEMPLO AULA1
+98765 FIS101 Física Cuántica Aplicada OO1 L 0800-0900 EINSTEIN - ALBERT LAB01
+98765 FIS101 Física Cuántica Aplicada OO1 M 0800-0900 EINSTEIN - ALBERT LAB01
+98765 FIS101 Física Cuántica Aplicada OO1 V 0800-0900 EINSTEIN - ALBERT LAB01</code></pre>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-gray-900 dark:text-white">Paso 3: Califica y Genera</h3>
+                    <p class="text-sm text-gray-700 dark:text-gray-400">Una vez analizado el texto, podrás calificar a tus profesores y eliminar las opciones que no quieras. ¡Luego, genera todas las combinaciones posibles!</p>
+                </div>
+            </div>
+            <button id="close-modal-btn" class="mt-8 w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Entendido, ¡Comenzar!</button>
+        </div>
+    </div>
+
+    <!-- Contenido Principal (Oculto al inicio) -->
+    <div id="main-content" class="hidden">
+        <!-- Vista de Entrada de Texto -->
+        <div id="text-input-page" class="container mx-auto p-4 md:p-8">
+            <header class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-blue-800 dark:text-blue-400">Optimizador de Horarios por Texto</h1>
+                <p class="text-lg text-gray-600 dark:text-gray-300 mt-2">Pega aquí los datos de los cursos con el formato especificado.</p>
+            </header>
+            <div class="max-w-4xl mx-auto">
+                <textarea id="course-text-input" class="w-full h-64 p-4 border rounded-lg shadow-inner bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200" placeholder="Pega aquí los datos de los cursos. Cada curso en una nueva línea..."></textarea>
+                <button id="parse-text-btn" class="mt-4 w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors">
+                    Analizar y Configurar Materias &rarr;
+                </button>
+                <div id="parser-status" class="mt-4 text-center"></div>
+            </div>
+        </div>
+
+        <!-- Vista de Selección de Materias -->
+        <div id="selection-page" class="hidden container mx-auto p-4 md:p-8">
+            <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                 <div>
+                    <h1 class="text-4xl font-bold text-blue-800 dark:text-blue-400">Paso 2: Configura tus Materias</h1>
+                    <p class="text-lg text-gray-600 dark:text-gray-300 mt-2">Califica y elimina las opciones de maestros que no te interesen.</p>
+                </div>
+                 <button id="back-to-input-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
+                    &larr; Volver a Ingresar Texto
+                </button>
+            </header>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6">
+                <h3 class="font-bold text-lg mb-2 text-gray-900 dark:text-white">Borrar Opciones por Horario</h3>
+                <div class="flex flex-wrap items-center gap-4">
+                    <select id="time-filter-condition" class="p-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600">
+                        <option value="during">Borrar clases que ocurran DURANTE la hora</option>
+                        <option value="ends_after">Borrar clases que terminen DESPUÉS de las</option>
+                        <option value="starts_before">Borrar clases que empiecen ANTES de las</option>
+                    </select>
+                    <input id="time-filter-value" type="time" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                    <button id="apply-time-filter" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Aplicar Filtro</button>
+                </div>
+            </div>
+            <div id="subjects-container" class="space-y-6"></div>
+            <div class="text-center mt-8">
+                <button id="generate-btn" class="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 transition-colors text-xl">
+                    Generar Combinaciones &rarr;
+                </button>
+            </div>
+        </div>
+
+        <!-- Vista de Resultados -->
+        <div id="results-page" class="hidden container mx-auto p-4 md:p-8">
+             <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                <div>
+                    <h1 class="text-4xl font-bold text-blue-800 dark:text-blue-400">Paso 3: Explora tus Horarios</h1>
+                    <p class="text-lg text-gray-600 dark:text-gray-300 mt-2">Estos son los horarios posibles con tus selecciones.</p>
+                </div>
+                <button id="back-to-selection-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
+                    &larr; Volver a Configurar
+                </button>
+            </header>
+            <div id="results-controls" class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6 flex justify-between items-center">
+                <div>
+                    <label class="font-bold text-gray-900 dark:text-white">Ordenar por:</label>
+                    <div class="mt-2 flex flex-wrap gap-4">
+                        <label class="flex items-center"><input type="radio" name="sort-order" value="combined" checked class="mr-2">Mejor Combinación</label>
+                        <label class="flex items-center"><input type="radio" name="sort-order" value="rating" class="mr-2">Calificación de Maestros</label>
+                        <label class="flex items-center"><input type="radio" name="sort-order" value="compactness" class="mr-2">Horario más Compacto</label>
+                    </div>
+                </div>
+                <button id="restore-btn" class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600">Restaurar Último Descartado</button>
+            </div>
+            <main id="results-container"></main>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- ESTADO GLOBAL Y NAVEGACIÓN ---
+    const instructionsModal = document.getElementById('instructions-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const mainContent = document.getElementById('main-content');
+    
+    const textInputPage = document.getElementById('text-input-page');
+    const selectionPage = document.getElementById('selection-page');
+    const resultsPage = document.getElementById('results-page');
+    
+    const parseTextBtn = document.getElementById('parse-text-btn');
+    const backToInputBtn = document.getElementById('back-to-input-btn');
+    const generateBtn = document.getElementById('generate-btn');
+    const backToSelectionBtn = document.getElementById('back-to-selection-btn');
+    const applyTimeFilterBtn = document.getElementById('apply-time-filter');
+    const restoreBtn = document.getElementById('restore-btn');
+    const resultsControls = document.getElementById('results-controls');
+
+    let subjectColorMap = new Map();
+    let lastDiscardedCard = null;
+    const colorPalette = [
+        { bg: 'dark:bg-blue-900/50 bg-blue-100', border: 'border-blue-500' }, { bg: 'dark:bg-green-900/50 bg-green-100', border: 'border-green-500' },
+        { bg: 'dark:bg-yellow-900/50 bg-yellow-100', border: 'border-yellow-500' }, { bg: 'dark:bg-red-900/50 bg-red-100', border: 'border-red-500' },
+        { bg: 'dark:bg-purple-900/50 bg-purple-100', border: 'border-purple-500' }, { bg: 'dark:bg-pink-900/50 bg-pink-100', border: 'border-pink-500' },
+        { bg: 'dark:bg-indigo-900/50 bg-indigo-100', border: 'border-indigo-500' }, { bg: 'dark:bg-teal-900/50 bg-teal-100', border: 'border-teal-500' },
+        { bg: 'dark:bg-orange-900/50 bg-orange-100', border: 'border-orange-500' },
+    ];
+    const ratingColors = { '5': 'bg-purple-500', '4': 'bg-green-500', '3': 'bg-orange-500', '2': 'bg-red-500', '1': 'bg-gray-400' };
+
+    closeModalBtn.addEventListener('click', () => {
+        instructionsModal.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+    });
+
+    parseTextBtn.addEventListener('click', handleParseText);
+    generateBtn.addEventListener('click', handleGenerateCombinations);
+    applyTimeFilterBtn.addEventListener('click', applyTimeFilter);
+    restoreBtn.addEventListener('click', restoreLastDiscarded);
+    
+    backToInputBtn.addEventListener('click', () => {
+        selectionPage.classList.add('hidden');
+        textInputPage.classList.remove('hidden');
+    });
+    backToSelectionBtn.addEventListener('click', () => {
+        resultsPage.classList.add('hidden');
+        selectionPage.classList.remove('hidden');
+    });
+    if (resultsControls) {
+        resultsControls.addEventListener('change', () => {
+            if (window.currentCombinations) {
+                displayResults(window.currentCombinations);
+            }
+        });
+    }
+
+    // --- FUNCIONES UTILITARIAS ---
+    function formatTime12h(time24) {
+        if (!time24) return '';
+        const [hours, minutes] = time24.split(':');
+        const h = parseInt(hours, 10);
+        const suffix = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return `${h12}:${minutes} ${suffix}`;
+    }
+
+    function copyToClipboard(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('Copiado al portapapeles:\n' + text);
+    }
+
+    // --- LÓGICA DE PARSEO DE TEXTO ---
+    function handleParseText() {
+        const text = document.getElementById('course-text-input').value;
+        const parserStatus = document.getElementById('parser-status');
+        
+        if (!text.trim()) {
+            parserStatus.textContent = "El área de texto está vacía.";
+            return;
+        }
+
+        parserStatus.innerHTML = `<div class="flex justify-center items-center mt-4"><div class="loader border-4 border-gray-200 rounded-full w-8 h-8"></div><span class="ml-4">Analizando texto...</span></div>`;
+
+        try {
+            const courseData = parseCourseText(text);
+            if (courseData.length === 0) {
+                parserStatus.innerHTML = `<p class="text-red-500">No se pudo extraer información. Revisa el formato del texto.</p>`;
+                return;
+            }
+            
+            renderSelectionPage(courseData);
+            textInputPage.classList.add('hidden');
+            selectionPage.classList.remove('hidden');
+            parserStatus.innerHTML = '';
+
+        } catch (error) {
+            console.error("Error parsing text:", error);
+            parserStatus.textContent = "Error al analizar el texto. Verifica el formato.";
+        }
+    }
+
+    function parseCourseText(text) {
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        const groupedByNrc = {};
+        const dayMap = { 'L': 'Lunes', 'M': 'Miercoles', 'A': 'Martes', 'J': 'Jueves', 'V': 'Viernes', 'S': 'Sábado' };
+        
+        lines.forEach(line => {
+            line = line.replace(/\u00A0/g, ' ').trim();
+            const regex = /^(\d{5})\s+([A-Z]+\s*\d+)\s+(.+?)\s+(\S+)\s+([LMAJVS])\s+(\d{4}-\d{4})\s+(.*)$/;
+            const match = line.match(regex);
+
+            if (!match) return;
+
+            const [, nrc, clave, materia, seccion, diaChar, hora, remaining] = match;
+            
+            const remainingParts = remaining.trim().split(/\s+/);
+            const salon = remainingParts.pop();
+            const profesor = remainingParts.join(' ');
+
+            if (!profesor) return;
+
+            if (!groupedByNrc[nrc]) {
+                groupedByNrc[nrc] = { nrc: nrc.trim(), materia: materia.trim(), profesor: profesor.trim(), horarios: [] };
+            }
+
+            const newHorario = { dia: dayMap[diaChar], inicio: `${hora.substring(0, 2)}:${hora.substring(2, 4)}`, fin: `${hora.substring(5, 7)}:${hora.substring(7, 9)}`, salon: salon.trim() };
+            if (!groupedByNrc[nrc].horarios.some(h => h.dia === newHorario.dia && h.inicio === newHorario.inicio)) {
+                groupedByNrc[nrc].horarios.push(newHorario);
+            }
+        });
+
+        return Object.values(groupedByNrc);
+    }
+    
+    // --- LÓGICA DE LA PÁGINA DE SELECCIÓN ---
+    function renderSelectionPage(courseData) {
+        const subjectsContainer = document.getElementById('subjects-container');
+        const subjects = {};
+        courseData.forEach(course => {
+            if (!subjects[course.materia]) subjects[course.materia] = [];
+            subjects[course.materia].push(course);
+        });
+
+        subjectsContainer.innerHTML = '';
+        subjectColorMap.clear();
+        let colorIndex = 0;
+
+        Object.keys(subjects).sort().forEach(materia => {
+            if (!subjectColorMap.has(materia)) {
+                subjectColorMap.set(materia, colorPalette[colorIndex % colorPalette.length]);
+                colorIndex++;
+            }
+            const color = subjectColorMap.get(materia);
+
+            const subjectCard = document.createElement('div');
+            subjectCard.className = 'subject-card bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg';
+            subjectCard.innerHTML = `<div class="flex items-center mb-4"><span class="w-4 h-4 rounded-full ${color.bg} border ${color.border}"></span><h2 class="text-xl md:text-2xl font-bold text-blue-700 dark:text-blue-400 ml-3">${materia}</h2></div><div class="options-container overflow-x-auto"></div>`;
+            
+            const optionsContainer = subjectCard.querySelector('.options-container');
+            const tableContainer = document.createElement('div');
+            tableContainer.className = "w-full";
+
+            const header = document.createElement('div');
+            header.className = "hidden md:grid md:grid-cols-12 gap-4 bg-gray-100 dark:bg-gray-700 p-3 rounded-t-lg font-semibold text-sm text-gray-600 dark:text-gray-300";
+            header.innerHTML = `<span class="col-span-4">Profesor</span><span class="col-span-1">NRC</span><span class="col-span-3">Horario</span><span class="col-span-2">Calificación</span><span class="col-span-2 text-center">Acciones</span>`;
+            tableContainer.appendChild(header);
+
+            const bodyContainer = document.createElement('div');
+            bodyContainer.className = "space-y-4 md:space-y-0";
+            
+            subjects[materia].forEach(course => {
+                const row = document.createElement('div');
+                row.className = 'teacher-option grid grid-cols-2 md:grid-cols-12 gap-4 p-3 border-b dark:border-gray-700 items-center hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                row.dataset.course = JSON.stringify(course);
+                
+                const horarioStr = course.horarios.map(h => `${h.dia.substring(0,3)} ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)}`).join('<br>');
+                
+                row.innerHTML = `
+                    <div class="md:col-span-4 col-span-2 flex items-center">
+                        <span class="rating-indicator w-3 h-3 rounded-full mr-3 flex-shrink-0"></span>
+                        <div><span class="md:hidden font-bold">Profesor: </span>${course.profesor}</div>
+                    </div>
+                    <div class="md:col-span-1 col-span-1"><span class="md:hidden font-bold">NRC: </span>${course.nrc}</div>
+                    <div class="md:col-span-3 col-span-2 text-sm"><span class="md:hidden font-bold">Horario: </span><br class="md:hidden">${horarioStr}</div>
+                    <div class="md:col-span-2 col-span-1">
+                        <select class="calificacion-maestro p-2 border rounded w-full bg-white dark:bg-gray-700 dark:border-gray-600 text-sm">
+                            <option value="5">Excelente</option><option value="4">Bueno</option><option value="3">Regular</option><option value="2">Malo</option><option value="1" selected>Nulo</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2 col-span-2 flex justify-center items-center gap-2">
+                        <button class="copy-btn text-blue-500 hover:text-blue-700" title="Copiar Info"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                        <button class="remove-btn text-red-500 hover:text-red-700 font-bold text-2xl" title="Eliminar Opción">&times;</button>
+                    </div>`;
+                bodyContainer.appendChild(row);
+
+                const ratingSelect = row.querySelector('.calificacion-maestro');
+                const ratingIndicator = row.querySelector('.rating-indicator');
+                
+                const setIndicatorColor = (indicator, value) => {
+                    indicator.className = `rating-indicator w-3 h-3 rounded-full mr-3 flex-shrink-0 ${ratingColors[value] || 'bg-gray-400'}`;
+                };
+
+                ratingSelect.addEventListener('change', (e) => setIndicatorColor(ratingIndicator, e.target.value));
+                setIndicatorColor(ratingIndicator, ratingSelect.value);
+
+                row.querySelector('.remove-btn').addEventListener('click', () => row.remove());
+                row.querySelector('.copy-btn').addEventListener('click', () => {
+                    const info = `Materia: ${course.materia}\nProfesor: ${course.profesor}\nNRC: ${course.nrc}`;
+                    copyToClipboard(info);
+                });
+            });
+            
+            tableContainer.appendChild(bodyContainer);
+            optionsContainer.appendChild(tableContainer);
+            subjectsContainer.appendChild(subjectCard);
+        });
+    }
+
+    function applyTimeFilter() {
+        const condition = document.getElementById('time-filter-condition').value;
+        const timeValue = document.getElementById('time-filter-value').value;
+        if (!timeValue) {
+            alert('Por favor, selecciona una hora para el filtro.');
+            return;
+        }
+        const timeInt = parseInt(timeValue.replace(':', ''));
+
+        const subjectsToEliminate = new Set();
+        const optionsToRemove = [];
+
+        document.querySelectorAll('.subject-card').forEach(card => {
+            const materia = card.querySelector('h2').textContent;
+            const teacherOptions = card.querySelectorAll('.teacher-option');
+            let remainingOptions = teacherOptions.length;
+            
+            teacherOptions.forEach(row => {
+                const course = JSON.parse(row.dataset.course);
+                let shouldRemove = false;
+                if (condition === 'ends_after') {
+                    if (course.horarios.some(h => parseInt(h.fin.replace(':', '')) > timeInt)) shouldRemove = true;
+                } else if (condition === 'starts_before') {
+                    if (course.horarios.some(h => parseInt(h.inicio.replace(':', '')) < timeInt)) shouldRemove = true;
+                } else if (condition === 'during') {
+                    if (course.horarios.some(h => {
+                        const start = parseInt(h.inicio.replace(':', ''));
+                        const end = parseInt(h.fin.replace(':', ''));
+                        return timeInt >= start && timeInt < end;
+                    })) {
+                        shouldRemove = true;
+                    }
+                }
+                if (shouldRemove) {
+                    remainingOptions--;
+                    optionsToRemove.push(row);
+                }
+            });
+
+            if (remainingOptions === 0 && teacherOptions.length > 0) {
+                subjectsToEliminate.add(materia);
+            }
+        });
+
+        if (subjectsToEliminate.size > 0) {
+            const subjectList = Array.from(subjectsToEliminate).join(', ');
+            if (!confirm(`Esta acción eliminará todas las opciones para la(s) materia(s): ${subjectList}. ¿Deseas continuar?`)) {
+                return;
+            }
+        }
+
+        optionsToRemove.forEach(row => row.remove());
+    }
+
+    // --- LÓGICA DE GENERACIÓN Y RESULTADOS ---
+    function handleGenerateCombinations() {
+        const coursesBySubject = {};
+        document.querySelectorAll('.subject-card').forEach(card => {
+            const materia = card.querySelector('h2').textContent;
+            const options = [];
+            card.querySelectorAll('.teacher-option').forEach(row => {
+                const course = JSON.parse(row.dataset.course);
+                course.calificacion_maestro = parseInt(row.querySelector('.calificacion-maestro').value);
+                options.push(course);
+            });
+            if (options.length > 0) coursesBySubject[materia] = options;
+        });
+
+        const courseList = Object.values(coursesBySubject);
+        if (courseList.length === 0) {
+            alert("No hay materias seleccionadas para generar combinaciones.");
+            return;
+        }
+
+        resultsPage.querySelector('#results-container').innerHTML = `<div class="flex justify-center items-center mt-8"><div class="loader border-4 border-gray-200 rounded-full w-12 h-12"></div></div><p class="text-center text-gray-600 dark:text-gray-300 mt-4">Generando combinaciones...</p>`;
+        selectionPage.classList.add('hidden');
+        resultsPage.classList.remove('hidden');
+
+        setTimeout(() => {
+            const combinations = [];
+            findCombinations(courseList, 0, [], combinations);
+            window.currentCombinations = combinations;
+            displayResults(combinations);
+        }, 50);
+    }
+    
+    function findCombinations(subjects, subjectIndex, currentCombination, allCombinations) {
+        if (subjectIndex === subjects.length) {
+            allCombinations.push([...currentCombination]);
+            return;
+        }
+        subjects[subjectIndex].forEach(course => {
+            if (!hasConflict(currentCombination, course)) {
+                currentCombination.push(course);
+                findCombinations(subjects, subjectIndex + 1, currentCombination, allCombinations);
+                currentCombination.pop();
+            }
+        });
+    }
+
+    function hasConflict(combination, newCourse) {
+        for (const existingCourse of combination) {
+            for (const t1 of existingCourse.horarios) {
+                for (const t2 of newCourse.horarios) {
+                    if (t1.dia === t2.dia) {
+                        const start1 = parseInt(t1.inicio.replace(':', ''));
+                        const end1 = parseInt(t1.fin.replace(':', ''));
+                        const start2 = parseInt(t2.inicio.replace(':', ''));
+                        const end2 = parseInt(t2.fin.replace(':', ''));
+                        if (Math.max(start1, start2) < Math.min(end1, end2)) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    
+    function calculateCompactnessScore(combination) {
+        let totalGap = 0;
+        const days = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+        
+        days.forEach(day => {
+            const classesToday = combination.flatMap(c => c.horarios.filter(h => h.dia === day));
+            if (classesToday.length < 2) return;
+
+            const times = classesToday.map(h => ({ start: parseInt(h.inicio.replace(':', '')), end: parseInt(h.fin.replace(':', '')) })).sort((a,b) => a.start - b.start);
+
+            for (let i = 0; i < times.length - 1; i++) {
+                const gap = times[i+1].start - times[i].end;
+                if (gap > 0) totalGap += gap;
+            }
+        });
+        return totalGap / 100;
+    }
+
+    function getDayScheduleRange(combination) {
+        let minTime = 2400;
+        let maxTime = 0;
+        combination.forEach(course => {
+            course.horarios.forEach(h => {
+                const start = parseInt(h.inicio.replace(':', ''));
+                const end = parseInt(h.fin.replace(':', ''));
+                if (start < minTime) minTime = start;
+                if (end > maxTime) maxTime = end;
+            });
+        });
+
+        if (minTime === 2400) return 'N/A';
+
+        const format = (timeInt) => {
+            const timeStr = timeInt.toString().padStart(4, '0');
+            return formatTime12h(`${timeStr.substring(0,2)}:${timeStr.substring(2,4)}`);
+        };
+
+        return `${format(minTime)} - ${format(maxTime)}`;
+    }
+
+    function displayResults(combinations) {
+        const resultsContainer = document.getElementById('results-container');
+        if (combinations.length === 0) {
+            resultsContainer.innerHTML = '<p class="text-center text-lg mt-8">No se encontraron combinaciones de horarios compatibles con las opciones seleccionadas.</p>';
+            restoreBtn.classList.add('hidden');
+            return;
+        }
+        
+        const sortOrder = document.querySelector('input[name="sort-order"]:checked').value;
+
+        const ratedCombinations = combinations.map(combo => {
+            const avgRating = combo.reduce((acc, course) => acc + course.calificacion_maestro, 0) / combo.length;
+            const compactnessScore = calculateCompactnessScore(combo);
+            const combinedScore = (avgRating * 2.5) - compactnessScore;
+            const dayRange = getDayScheduleRange(combo);
+
+            let qualityClass = 'malo';
+            if (avgRating >= 4.5) qualityClass = 'excelente';
+            else if (avgRating >= 3.5) qualityClass = 'bueno';
+            else if (avgRating >= 2.5) qualityClass = 'regular';
+            return { combo, avgRating, compactnessScore, combinedScore, dayRange, qualityClass };
+        });
+        
+        if (sortOrder === 'rating') ratedCombinations.sort((a, b) => b.avgRating - a.avgRating);
+        else if (sortOrder === 'compactness') ratedCombinations.sort((a, b) => a.compactnessScore - b.compactnessScore);
+        else ratedCombinations.sort((a, b) => b.combinedScore - a.combinedScore);
+
+
+        resultsContainer.innerHTML = `<h3 class="text-xl font-bold mb-4">${ratedCombinations.length} combinaciones encontradas</h3>`;
+        
+        ratedCombinations.forEach((item, index) => {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `schedule-card border-l-8 p-4 rounded-lg mb-4 bg-white dark:bg-gray-800 shadow-md ${item.qualityClass}`;
+            resultDiv.innerHTML = `
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h4 class="text-xl font-bold text-blue-800 dark:text-blue-400">Combinación #${index + 1}</h4>
+                        <span class="font-semibold text-gray-700 dark:text-gray-300 mr-4" title="Calificación promedio de maestros">Calificación: ${item.avgRating.toFixed(2)}</span>
+                        <span class="font-semibold text-gray-700 dark:text-gray-300" title="Rango de horas del día">Horario del día: ${item.dayRange}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                         <button class="export-btn text-green-500 hover:text-green-700" title="Exportar a Texto"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></button>
+                         <button class="discard-btn text-red-500 hover:text-red-700" title="Descartar"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                         <button class="view-btn bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 text-sm" data-index="${index}">Ver Horario</button>
+                    </div>
+                </div>
+                <div class="schedule-details mt-4" id="schedule-${index}" style="display: none;"></div>`;
+            resultsContainer.appendChild(resultDiv);
+        });
+
+        document.querySelectorAll('.view-btn').forEach((btn, i) => btn.addEventListener('click', () => toggleScheduleView(ratedCombinations[i].combo, i)));
+        document.querySelectorAll('.discard-btn').forEach((btn, i) => btn.addEventListener('click', () => discardCard(btn.closest('.schedule-card'))));
+        document.querySelectorAll('.export-btn').forEach((btn, i) => btn.addEventListener('click', () => exportCombination(ratedCombinations[i].combo)));
+    }
+    
+    function toggleScheduleView(combination, index) {
+        const scheduleContainer = document.getElementById(`schedule-${index}`);
+        const btn = document.querySelector(`.view-btn[data-index="${index}"]`);
+        if (scheduleContainer.style.display === 'none') {
+            scheduleContainer.innerHTML = generateTableHTML(combination);
+            scheduleContainer.style.display = 'block';
+            btn.textContent = 'Ocultar';
+        } else {
+            scheduleContainer.style.display = 'none';
+            btn.textContent = 'Ver Horario';
+        }
+    }
+
+    function discardCard(cardElement) {
+        lastDiscardedCard = cardElement;
+        cardElement.classList.add('hidden');
+        restoreBtn.classList.remove('hidden');
+    }
+
+    function restoreLastDiscarded() {
+        if (lastDiscardedCard) {
+            lastDiscardedCard.classList.remove('hidden');
+            lastDiscardedCard = null;
+            restoreBtn.classList.add('hidden');
+        }
+    }
+
+    function exportCombination(combination) {
+        let text = "Horario Seleccionado:\n\n";
+        combination.forEach(course => {
+            text += `Materia: ${course.materia}\n`;
+            text += `Profesor: ${course.profesor}\n`;
+            text += `NRC: ${course.nrc}\n`;
+            text += "Horarios:\n";
+            course.horarios.forEach(h => {
+                text += `  - ${h.dia}: ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)} (Salón: ${h.salon})\n`;
+            });
+            text += "--------------------------------\n\n";
+        });
+        copyToClipboard(text);
+    }
+    
+    function generateTableHTML(combination) {
+        let minHour = 24;
+        let maxHour = 0;
+        combination.forEach(course => {
+            course.horarios.forEach(schedule => {
+                const startHour = parseInt(schedule.inicio.split(':')[0]);
+                const endHour = Math.ceil(parseInt(schedule.fin.replace(':', '')) / 100);
+                if (startHour < minHour) minHour = startHour;
+                if (endHour > maxHour) maxHour = endHour;
+            });
+        });
+        
+        minHour = Math.max(7, minHour);
+        maxHour = Math.min(21, maxHour);
+
+        const hours = Array.from({length: maxHour - minHour}, (_, i) => i + minHour);
+        
+        let tableHTML = '<div class="overflow-x-auto"><table class="min-w-full border-collapse border border-gray-300 dark:border-gray-700"><thead><tr class="bg-gray-200 dark:bg-gray-700"><th class="border dark:border-gray-600 p-2 text-sm">Hora</th><th class="border dark:border-gray-600 p-2 text-sm">Lunes</th><th class="border dark:border-gray-600 p-2 text-sm">Martes</th><th class="border dark:border-gray-600 p-2 text-sm">Miércoles</th><th class="border dark:border-gray-600 p-2 text-sm">Jueves</th><th class="border dark:border-gray-600 p-2 text-sm">Viernes</th></tr></thead><tbody>';
+        for (const hour of hours) {
+            const time12h = formatTime12h(`${hour.toString().padStart(2, '0')}:00`);
+            const nextTime12h = formatTime12h(`${(hour + 1).toString().padStart(2, '0')}:00`);
+            tableHTML += `<tr class="text-center"><td class="border dark:border-gray-600 p-2 text-xs bg-gray-50 dark:bg-gray-800 font-semibold">${time12h} - ${nextTime12h}</td>`;
+            ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'].forEach(day => {
+                let cellContent = '';
+                combination.forEach(course => {
+                    const color = subjectColorMap.get(course.materia) || { bg: 'bg-gray-100', border: 'border-gray-500' };
+                    course.horarios.forEach(schedule => {
+                        if (schedule.dia === day) {
+                            const start = parseInt(schedule.inicio.replace(':', ''));
+                            const end = parseInt(schedule.fin.replace(':', ''));
+                            if (hour * 100 >= start && hour * 100 < end) {
+                                cellContent += `<div class="${color.bg} border-l-4 ${color.border} p-2 rounded mb-1 text-left text-xs"><strong class="font-bold text-gray-800 dark:text-gray-100">${course.materia}</strong><span>${course.profesor}</span><br><span class="text-gray-600 dark:text-gray-400">Salón: ${schedule.salon || 'N/A'}</span></div>`;
+                            }
+                        }
+                    });
+                });
+                tableHTML += `<td class="border dark:border-gray-600 p-1 align-top">${cellContent}</td>`;
+            });
+            tableHTML += '</tr>';
+        }
+        tableHTML += '</tbody></table></div>';
+
+        // Añadir leyenda de maestros
+        let legendHTML = '<div class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"><h4 class="font-bold mb-2">Leyenda de Maestros</h4><ul class="space-y-2">';
+        combination.forEach(course => {
+            const ratingColor = ratingColors[course.calificacion_maestro] || 'bg-gray-400';
+            legendHTML += `<li class="flex items-center text-sm"><span class="w-3 h-3 rounded-full mr-2 ${ratingColor}"></span><span>${course.profesor} (${course.materia})</span></li>`;
+        });
+        legendHTML += '</ul></div>';
+
+        return tableHTML + legendHTML;
+    }
+});
+</script>
+
+</body>
+</html>
