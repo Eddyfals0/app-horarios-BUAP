@@ -20,7 +20,6 @@
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
 
-    <!-- Modal de Instrucciones -->
     <div id="instructions-modal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-2xl max-w-2xl w-full">
             <h2 class="text-3xl font-bold text-blue-800 dark:text-blue-400 mb-4">¡Bienvenido al Optimizador de Horarios!</h2>
@@ -48,9 +47,7 @@
         </div>
     </div>
 
-    <!-- Contenido Principal (Oculto al inicio) -->
     <div id="main-content" class="hidden">
-        <!-- Vista de Entrada de Texto -->
         <div id="text-input-page" class="container mx-auto p-4 md:p-8">
             <header class="text-center mb-8">
                 <h1 class="text-4xl font-bold text-blue-800 dark:text-blue-400">Optimizador de Horarios por Texto</h1>
@@ -65,7 +62,6 @@
             </div>
         </div>
 
-        <!-- Vista de Selección de Materias -->
         <div id="selection-page" class="hidden container mx-auto p-4 md:p-8">
             <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                  <div>
@@ -80,12 +76,13 @@
                 <h3 class="font-bold text-lg mb-2 text-gray-900 dark:text-white">Borrar Opciones por Horario</h3>
                 <div class="flex flex-wrap items-center gap-4">
                     <select id="time-filter-condition" class="p-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600">
-                        <option value="during">Borrar clases que ocurran DURANTE la hora</option>
-                        <option value="ends_after">Borrar clases que terminen DESPUÉS de las</option>
-                        <option value="starts_before">Borrar clases que empiecen ANTES de las</option>
+                        <option value="during">Borrar si la clase ocurre DURANTE la hora</option>
+                        <option value="ends_after">Borrar si la clase termina DESPUÉS de las</option>
+                        <option value="starts_before">Borrar si la clase empieza ANTES de las</option>
                     </select>
-                    <input id="time-filter-value" type="time" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
+                    <input id="time-filter-value" type="time" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value="12:00">
                     <button id="apply-time-filter" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Aplicar Filtro</button>
+                    <button id="restore-options-btn" class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600">Restaurar</button>
                 </div>
             </div>
             <div id="subjects-container" class="space-y-6"></div>
@@ -96,7 +93,6 @@
             </div>
         </div>
 
-        <!-- Vista de Resultados -->
         <div id="results-page" class="hidden container mx-auto p-4 md:p-8">
              <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                 <div>
@@ -116,7 +112,7 @@
                         <label class="flex items-center"><input type="radio" name="sort-order" value="compactness" class="mr-2">Horario más Compacto</label>
                     </div>
                 </div>
-                <button id="restore-btn" class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600">Restaurar Último Descartado</button>
+                <button id="restore-results-btn" class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600">Restaurar Último Descartado</button>
             </div>
             <main id="results-container"></main>
         </div>
@@ -138,11 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateBtn = document.getElementById('generate-btn');
     const backToSelectionBtn = document.getElementById('back-to-selection-btn');
     const applyTimeFilterBtn = document.getElementById('apply-time-filter');
-    const restoreBtn = document.getElementById('restore-btn');
+    const restoreOptionsBtn = document.getElementById('restore-options-btn');
+    const restoreResultsBtn = document.getElementById('restore-results-btn');
     const resultsControls = document.getElementById('results-controls');
 
     let subjectColorMap = new Map();
-    let lastDiscardedCard = null;
+    let discardedOptionsHistory = [];
+    let lastDiscardedResult = null;
     const colorPalette = [
         { bg: 'dark:bg-blue-900/50 bg-blue-100', border: 'border-blue-500' }, { bg: 'dark:bg-green-900/50 bg-green-100', border: 'border-green-500' },
         { bg: 'dark:bg-yellow-900/50 bg-yellow-100', border: 'border-yellow-500' }, { bg: 'dark:bg-red-900/50 bg-red-100', border: 'border-red-500' },
@@ -160,7 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
     parseTextBtn.addEventListener('click', handleParseText);
     generateBtn.addEventListener('click', handleGenerateCombinations);
     applyTimeFilterBtn.addEventListener('click', applyTimeFilter);
-    restoreBtn.addEventListener('click', restoreLastDiscarded);
+    restoreOptionsBtn.addEventListener('click', restoreLastOptions);
+    restoreResultsBtn.addEventListener('click', restoreLastResult);
     
     backToInputBtn.addEventListener('click', () => {
         selectionPage.classList.add('hidden');
@@ -332,7 +331,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 ratingSelect.addEventListener('change', (e) => setIndicatorColor(ratingIndicator, e.target.value));
                 setIndicatorColor(ratingIndicator, ratingSelect.value);
 
-                row.querySelector('.remove-btn').addEventListener('click', () => row.remove());
+                row.querySelector('.remove-btn').addEventListener('click', () => {
+                    discardedOptionsHistory.push([row]);
+                    row.style.display = 'none';
+                    updateRestoreOptionsButton();
+                });
                 row.querySelector('.copy-btn').addEventListener('click', () => {
                     const info = `Materia: ${course.materia}\nProfesor: ${course.profesor}\nNRC: ${course.nrc}`;
                     copyToClipboard(info);
@@ -360,9 +363,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.subject-card').forEach(card => {
             const materia = card.querySelector('h2').textContent;
             const teacherOptions = card.querySelectorAll('.teacher-option');
-            let remainingOptions = teacherOptions.length;
+            let visibleOptionsCount = Array.from(teacherOptions).filter(opt => opt.style.display !== 'none').length;
             
             teacherOptions.forEach(row => {
+                if (row.style.display === 'none') return;
                 const course = JSON.parse(row.dataset.course);
                 let shouldRemove = false;
                 if (condition === 'ends_after') {
@@ -379,12 +383,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 if (shouldRemove) {
-                    remainingOptions--;
+                    visibleOptionsCount--;
                     optionsToRemove.push(row);
                 }
             });
 
-            if (remainingOptions === 0 && teacherOptions.length > 0) {
+            if (visibleOptionsCount === 0 && teacherOptions.length > 0) {
                 subjectsToEliminate.add(materia);
             }
         });
@@ -395,8 +399,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         }
-
-        optionsToRemove.forEach(row => row.remove());
+        
+        if (optionsToRemove.length > 0) {
+            discardedOptionsHistory.push(optionsToRemove);
+            optionsToRemove.forEach(row => row.style.display = 'none');
+            updateRestoreOptionsButton();
+        }
+    }
+    
+    function updateRestoreOptionsButton() {
+        if(discardedOptionsHistory.length > 0){
+            const lastSetCount = discardedOptionsHistory[discardedOptionsHistory.length - 1].length;
+            restoreOptionsBtn.textContent = `Restaurar (${lastSetCount})`;
+            restoreOptionsBtn.classList.remove('hidden');
+        } else {
+            restoreOptionsBtn.classList.add('hidden');
+        }
+    }
+    
+    function restoreLastOptions() {
+        if (discardedOptionsHistory.length > 0) {
+            const lastSet = discardedOptionsHistory.pop();
+            lastSet.forEach(row => row.style.display = 'grid');
+            updateRestoreOptionsButton();
+        }
     }
 
     // --- LÓGICA DE GENERACIÓN Y RESULTADOS ---
@@ -406,9 +432,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const materia = card.querySelector('h2').textContent;
             const options = [];
             card.querySelectorAll('.teacher-option').forEach(row => {
-                const course = JSON.parse(row.dataset.course);
-                course.calificacion_maestro = parseInt(row.querySelector('.calificacion-maestro').value);
-                options.push(course);
+                if(row.style.display !== 'none') { // Only include visible options
+                    const course = JSON.parse(row.dataset.course);
+                    course.calificacion_maestro = parseInt(row.querySelector('.calificacion-maestro').value);
+                    options.push(course);
+                }
             });
             if (options.length > 0) coursesBySubject[materia] = options;
         });
@@ -422,6 +450,8 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsPage.querySelector('#results-container').innerHTML = `<div class="flex justify-center items-center mt-8"><div class="loader border-4 border-gray-200 rounded-full w-12 h-12"></div></div><p class="text-center text-gray-600 dark:text-gray-300 mt-4">Generando combinaciones...</p>`;
         selectionPage.classList.add('hidden');
         resultsPage.classList.remove('hidden');
+        lastDiscardedResult = null;
+        updateRestoreResultButton();
 
         setTimeout(() => {
             const combinations = [];
@@ -506,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const resultsContainer = document.getElementById('results-container');
         if (combinations.length === 0) {
             resultsContainer.innerHTML = '<p class="text-center text-lg mt-8">No se encontraron combinaciones de horarios compatibles con las opciones seleccionadas.</p>';
-            restoreBtn.classList.add('hidden');
+            restoreResultsBtn.classList.add('hidden');
             return;
         }
         
@@ -571,16 +601,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function discardCard(cardElement) {
-        lastDiscardedCard = cardElement;
+        lastDiscardedResult = cardElement;
         cardElement.classList.add('hidden');
-        restoreBtn.classList.remove('hidden');
+        updateRestoreResultButton();
     }
 
-    function restoreLastDiscarded() {
-        if (lastDiscardedCard) {
-            lastDiscardedCard.classList.remove('hidden');
-            lastDiscardedCard = null;
-            restoreBtn.classList.add('hidden');
+    function restoreLastResult() {
+        if (lastDiscardedResult) {
+            lastDiscardedResult.classList.remove('hidden');
+            lastDiscardedResult = null;
+            updateRestoreResultButton();
+        }
+    }
+    
+    function updateRestoreResultButton() {
+        if (lastDiscardedResult) {
+            restoreResultsBtn.classList.remove('hidden');
+        } else {
+            restoreResultsBtn.classList.add('hidden');
         }
     }
 
