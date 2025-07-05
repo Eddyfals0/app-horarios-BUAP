@@ -17,6 +17,8 @@
         .schedule-card.malo { border-left-color: #dc3545; }
         .loader { border-top-color: #3498db; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .conflict-highlight { background-color: rgba(239, 68, 68, 0.2) !important; }
+        .dark .conflict-highlight { background-color: rgba(239, 68, 68, 0.3) !important; }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
@@ -154,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { bg: 'dark:bg-indigo-900/50 bg-indigo-100', border: 'border-indigo-500' }, { bg: 'dark:bg-teal-900/50 bg-teal-100', border: 'border-teal-500' },
         { bg: 'dark:bg-orange-900/50 bg-orange-100', border: 'border-orange-500' },
     ];
-    const ratingColors = { '5': 'bg-purple-500', '4': 'bg-green-500', '3': 'bg-orange-500', '2': 'bg-red-500', '1': 'bg-gray-400' };
+    const ratingColors = { '5': 'bg-purple-500', '4': 'bg-green-500', '3': 'bg-orange-500', '2': 'bg-red-500', '1': 'bg-gray-400', '0': 'bg-black' };
 
     closeModalBtn.addEventListener('click', () => {
         instructionsModal.classList.add('hidden');
@@ -277,6 +279,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         subjectsContainer.innerHTML = '';
         subjectColorMap.clear();
+        discardedOptionsHistory = [];
+        updateRestoreOptionsButton();
         let colorIndex = 0;
 
         Object.keys(subjects).sort().forEach(materia => {
@@ -318,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="md:col-span-3 col-span-2 text-sm"><span class="md:hidden font-bold">Horario: </span><br class="md:hidden">${horarioStr}</div>
                     <div class="md:col-span-2 col-span-1">
                         <select class="calificacion-maestro p-2 border rounded w-full bg-white dark:bg-gray-700 dark:border-gray-600 text-sm">
-                            <option value="5">Excelente</option><option value="4">Bueno</option><option value="3">Regular</option><option value="2">Malo</option><option value="1" selected>Nulo</option>
+                            <option value="5">Excelente</option><option value="4">Bueno</option><option value="3">Regular</option><option value="2">Malo</option><option value="1" selected>Nulo</option><option value="0">Horrible</option>
                         </select>
                     </div>
                     <div class="md:col-span-2 col-span-2 flex justify-center items-center gap-2">
@@ -341,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     discardedOptionsHistory.push([row]);
                     row.style.display = 'none';
                     updateRestoreOptionsButton();
+                    updateConflictHighlighting();
                 });
                 row.querySelector('.copy-btn').addEventListener('click', () => {
                     const info = `Materia: ${course.materia}\nProfesor: ${course.profesor}\nNRC: ${course.nrc}`;
@@ -410,6 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
             discardedOptionsHistory.push(optionsToRemove);
             optionsToRemove.forEach(row => row.style.display = 'none');
             updateRestoreOptionsButton();
+            updateConflictHighlighting();
         }
     }
     
@@ -428,7 +434,42 @@ document.addEventListener('DOMContentLoaded', () => {
             const lastSet = discardedOptionsHistory.pop();
             lastSet.forEach(row => row.style.display = 'grid');
             updateRestoreOptionsButton();
+            updateConflictHighlighting();
         }
+    }
+
+    function updateConflictHighlighting() {
+        // Clear previous highlights
+        document.querySelectorAll('.teacher-option').forEach(row => {
+            row.classList.remove('conflict-highlight');
+            row.title = '';
+        });
+
+        const lockedInCourses = [];
+        document.querySelectorAll('.subject-card').forEach(card => {
+            const visibleOptions = Array.from(card.querySelectorAll('.teacher-option')).filter(opt => opt.style.display !== 'none');
+            if (visibleOptions.length === 1) {
+                lockedInCourses.push(JSON.parse(visibleOptions[0].dataset.course));
+            }
+        });
+
+        if (lockedInCourses.length === 0) return;
+
+        document.querySelectorAll('.teacher-option').forEach(row => {
+            if (row.style.display === 'none') return;
+            const currentCourse = JSON.parse(row.dataset.course);
+            
+            // Don't highlight the locked-in course itself
+            if (lockedInCourses.some(locked => locked.nrc === currentCourse.nrc)) return;
+
+            for (const lockedCourse of lockedInCourses) {
+                if (hasConflict([currentCourse], lockedCourse)) {
+                    row.classList.add('conflict-highlight');
+                    row.title = `Conflicto con ${lockedCourse.materia} (${lockedCourse.profesor})`;
+                    break; 
+                }
+            }
+        });
     }
 
     // --- LÓGICA DE GENERACIÓN Y RESULTADOS ---
@@ -438,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const materia = card.querySelector('h2').textContent;
             const options = [];
             card.querySelectorAll('.teacher-option').forEach(row => {
-                if(row.style.display !== 'none') { // Only include visible options
+                if(row.style.display !== 'none') {
                     const course = JSON.parse(row.dataset.course);
                     course.calificacion_maestro = parseInt(row.querySelector('.calificacion-maestro').value);
                     options.push(course);
@@ -553,11 +594,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const compactnessScore = calculateCompactnessScore(combo);
             const combinedScore = (avgRating * 2.5) - compactnessScore;
             const dayRange = getDayScheduleRange(combo);
+            const hasHorrible = combo.some(c => c.calificacion_maestro === 0);
 
             let qualityClass = 'malo';
-            if (avgRating >= 4.5) qualityClass = 'excelente';
-            else if (avgRating >= 3.5) qualityClass = 'bueno';
-            else if (avgRating >= 2.5) qualityClass = 'regular';
+            if (hasHorrible) {
+                qualityClass = 'malo';
+            } else if (avgRating >= 4.5) {
+                qualityClass = 'excelente';
+            } else if (avgRating >= 3.5) {
+                qualityClass = 'bueno';
+            } else if (avgRating >= 2.5) {
+                qualityClass = 'regular';
+            }
             return { combo, avgRating, compactnessScore, combinedScore, dayRange, qualityClass };
         });
         
@@ -654,11 +702,11 @@ document.addEventListener('DOMContentLoaded', () => {
             scheduleContainer.style.display = 'block';
         }
 
-        const elementToCapture = scheduleContainer.querySelector('table');
+        const elementToCapture = scheduleContainer; // Capture the whole container
         if (elementToCapture) {
             html2canvas(elementToCapture, { 
                 scale: 2, 
-                backgroundColor: '#1f2937' // dark:bg-gray-800
+                backgroundColor: '#111827' // dark:bg-gray-900
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'mi_horario.jpg';
@@ -704,7 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (hour * 100 >= start && hour * 100 < end) {
                                 cellContent += `<div class="${color.bg} border-l-4 ${color.border} p-1.5 rounded mb-1 text-left">
                                     <strong class="font-bold text-gray-800 dark:text-gray-100 block text-[11px]">${course.materia}</strong>
-                                    <span class="block text-[10px]">${course.profesor}</span>
+                                    <span class="block text-[10px] text-gray-700 dark:text-gray-300">${course.profesor}</span>
                                     <span class="block text-[10px] text-gray-600 dark:text-gray-400 mt-1">Salón: ${schedule.salon || 'N/A'} | NRC: ${course.nrc}</span>
                                 </div>`;
                             }
