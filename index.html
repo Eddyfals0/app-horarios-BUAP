@@ -1,782 +1,1186 @@
 <!DOCTYPE html>
 <html lang="es" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Optimizador de Horarios por Texto</title>
+    <title>Optimizador de Horarios BUAP</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="carreras.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .schedule-card.excelente { border-left-color: #8b5cf6; } /* Morado */
-        .schedule-card.bueno { border-left-color: #17a2b8; }
-        .schedule-card.regular { border-left-color: #fd7e14; }
-        .schedule-card.malo { border-left-color: #dc3545; }
-        .loader { border-top-color: #3498db; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .conflict-highlight { background-color: rgba(239, 68, 68, 0.2) !important; }
-        .dark .conflict-highlight { background-color: rgba(239, 68, 68, 0.3) !important; }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .schedule-card.excelente {
+            border-left-color: #8b5cf6;
+        }
+
+        /* Morado */
+        .schedule-card.bueno {
+            border-left-color: #17a2b8;
+        }
+
+        .schedule-card.regular {
+            border-left-color: #fd7e14;
+        }
+
+        .schedule-card.malo {
+            border-left-color: #dc3545;
+        }
+
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .conflict-highlight {
+            background-color: rgba(239, 68, 68, 0.2) !important;
+        }
+
+        .dark .conflict-highlight {
+            background-color: rgba(239, 68, 68, 0.3) !important;
+        }
+
+        /* Custom scrollbar for better look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
 
-    <!-- Modal de Instrucciones -->
-    <div id="instructions-modal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-        <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-2xl max-w-2xl w-full">
-            <h2 class="text-3xl font-bold text-blue-800 dark:text-blue-400 mb-4">¡Bienvenido al Optimizador de Horarios!</h2>
-            <p class="text-gray-600 dark:text-gray-300 mb-6">Sigue estos sencillos pasos para encontrar tu horario ideal:</p>
-            <div class="space-y-4 text-left">
-                <div>
-                    <h3 class="font-bold text-lg text-gray-900 dark:text-white">Paso 1: Prepara tu texto</h3>
-                    <p class="text-sm text-gray-700 dark:text-gray-400">Para evitar errores, te recomendamos convertir tu PDF de horarios a un archivo de Word. Luego, copia únicamente las líneas de las materias que te interesan.</p>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen flex flex-col">
+
+    <!-- Navbar Simple -->
+    <nav class="bg-white dark:bg-gray-800 shadow-sm p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold text-blue-800 dark:text-blue-400">📅 Optimizador BUAP</h1>
+            <button id="reset-app-btn"
+                class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Reiniciar Todo</button>
+        </div>
+    </nav>
+
+    <div id="debug-log" class="bg-black text-green-400 p-2 text-xs font-mono h-20 overflow-y-auto hidden"></div>
+    <div id="main-content" class="container mx-auto p-4 md:p-8 flex-grow">
+
+        <!-- PANTALLA 1: SELECCIÓN DE CARPETA -->
+        <!-- PANTALLA 1: LOADING / ESTADO INICIAL -->
+        <!-- PANTALLA 1: LOADING / ESTADO INICIAL -->
+        <div id="folder-input-page" class="flex flex-col items-center justify-center h-full py-10">
+            <div
+                class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full text-center border dark:border-gray-700">
+                <div id="loading-folder">
+                    <div
+                        class="loader inline-block w-12 h-12 rounded-full border-4 border-t-blue-500 border-gray-200 mb-4">
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Cargando Catálogo...</h2>
+                    <p class="text-gray-600 dark:text-gray-400">Por favor espera un momento.</p>
                 </div>
-                <div>
-                    <h3 class="font-bold text-lg text-gray-900 dark:text-white">Paso 2: Pega en el formato correcto</h3>
-                    <p class="text-sm text-gray-700 dark:text-gray-400">Asegúrate de que cada línea tenga el siguiente formato. Aquí tienes un ejemplo claro:</p>
-                    <pre class="bg-gray-100 dark:bg-gray-700 dark:text-gray-300 p-3 rounded-md text-xs mt-2 overflow-x-auto"><code>11111 MAT101 Algebra Basica OO1 L 0700-0859 PROFESOR - EJEMPLO AULA1
-11111 MAT101 Algebra Basica OO1 M 0700-0859 PROFESOR - EJEMPLO AULA1
-98765 FIS101 Física Cuántica Aplicada OO1 L 0800-0900 EINSTEIN - ALBERT LAB01
-98765 FIS101 Física Cuántica Aplicada OO1 M 0800-0900 EINSTEIN - ALBERT LAB01
-98765 FIS101 Física Cuántica Aplicada OO1 V 0800-0900 EINSTEIN - ALBERT LAB01</code></pre>
-                </div>
-                <div>
-                    <h3 class="font-bold text-lg text-gray-900 dark:text-white">Paso 3: Califica y Genera</h3>
-                    <p class="text-sm text-gray-700 dark:text-gray-400">Una vez analizado el texto, podrás calificar a tus profesores y eliminar las opciones que no quieras. ¡Luego, genera todas las combinaciones posibles!</p>
+
+                <div id="folder-error"
+                    class="hidden text-left bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
+                    <h3 class="text-red-600 dark:text-red-400 font-bold text-lg mb-2">⚠️ Error de Carga</h3>
+                    <p class="text-gray-700 dark:text-gray-300 text-sm mb-4" id="folder-error-msg">No se encontraron los
+                        datos.</p>
+                    <div
+                        class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono">
+                        Intenta ejecutar: <br>
+                        <span class="text-blue-600 dark:text-blue-400">python generate_catalog.py</span>
+                    </div>
                 </div>
             </div>
-            <button id="close-modal-btn" class="mt-8 w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Entendido, ¡Comenzar!</button>
+            <!-- Elementos legacy ocultos para evitar errores de referencias JS si existen -->
+            <input type="file" id="folder-input" class="hidden" />
         </div>
-    </div>
 
-    <!-- Contenido Principal (Oculto al inicio) -->
-    <div id="main-content" class="hidden">
-        <!-- Vista de Entrada de Texto -->
-        <div id="text-input-page" class="container mx-auto p-4 md:p-8">
-            <header class="text-center mb-8">
-                <h1 class="text-4xl font-bold text-blue-800 dark:text-blue-400">Optimizador de Horarios por Texto</h1>
-                <p class="text-lg text-gray-600 dark:text-gray-300 mt-2">Pega aquí los datos de los cursos con el formato especificado.</p>
+        <!-- PANTALLA 2: SELECCIÓN DE CARRERA Y ESPECIALIDAD -->
+        <div id="career-selection-page" class="hidden">
+            <header class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Selecciona tu Carrera y Especialidad</h2>
+                <p class="text-gray-600 dark:text-gray-400">Explora las carpetas encontradas y elige el archivo CSV
+                    correspondiente.</p>
             </header>
-            <div class="max-w-4xl mx-auto">
-                <textarea id="course-text-input" class="w-full h-64 p-4 border rounded-lg shadow-inner bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200" placeholder="Pega aquí los datos de los cursos. Cada curso en una nueva línea..."></textarea>
-                <button id="parse-text-btn" class="mt-4 w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors">
-                    Analizar y Configurar Materias &rarr;
-                </button>
-                <div id="parser-status" class="mt-4 text-center"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Lista de Carreras (Izquierda) -->
+                <div class="md:col-span-1 bg-white dark:bg-gray-800 rounded-lg shadow p-4 h-96 overflow-y-auto">
+                    <h3 class="font-bold text-lg mb-4 border-b pb-2 dark:border-gray-700">Carreras</h3>
+                    <ul id="careers-list" class="space-y-2">
+                        <!-- Items inyectados por JS -->
+                    </ul>
+                </div>
+
+                <!-- Lista de Especialidades (Derecha) -->
+                <div class="md:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow p-4 h-96 overflow-y-auto">
+                    <h3 class="font-bold text-lg mb-4 border-b pb-2 dark:border-gray-700">Especialidades (Archivos CSV)
+                    </h3>
+                    <ul id="specialties-list" class="space-y-2">
+                        <li class="text-gray-500 italic">Selecciona una carrera para ver sus especialidades...</li>
+                    </ul>
+                </div>
             </div>
         </div>
 
-        <!-- Vista de Selección de Materias -->
-        <div id="selection-page" class="hidden container mx-auto p-4 md:p-8">
+        <!-- PANTALLA 3: PRE-SELECCIÓN DE MATERIAS -->
+        <div id="subject-filter-page" class="hidden">
+            <header class="mb-6 flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Selecciona las Materias</h2>
+                    <p class="text-gray-600 dark:text-gray-400">Elige qué materias deseas cursar este semestre de la
+                        lista disponible.</p>
+                </div>
+                <button id="confirm-subjects-btn"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg flex items-center">
+                    Continuar
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20"
+                        fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </header>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <span id="selected-count" class="font-semibold text-blue-600 dark:text-blue-400">0 materias
+                        seleccionadas</span>
+                    <div>
+                        <button id="select-all-btn" class="text-sm text-blue-500 hover:underline mr-4">Seleccionar
+                            Todas</button>
+                        <button id="deselect-all-btn" class="text-sm text-gray-500 hover:underline">Deseleccionar
+                            Todas</button>
+                    </div>
+                </div>
+                <!-- Buscador -->
+                <input type="text" id="subject-search" placeholder="Buscar materia..."
+                    class="w-full p-2 mb-4 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600 text-sm">
+
+                <div id="checkbox-container"
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto p-2">
+                    <!-- Checkboxes inyectados por JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- PANTALLA 4: CONFIGURACIÓN DE MAESTROS (Ya existente) -->
+        <div id="selection-page" class="hidden h-full">
             <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                 <div>
-                    <h1 class="text-4xl font-bold text-blue-800 dark:text-blue-400">Paso 2: Configura tus Materias</h1>
-                    <p class="text-lg text-gray-600 dark:text-gray-300 mt-2">Califica y elimina las opciones de maestros que no te interesen.</p>
+                <div>
+                    <h1 class="text-2xl font-bold text-blue-800 dark:text-blue-400">Configura tus Preferencias</h1>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Califica a los profesores y elimina horarios que
+                        no te convengan.</p>
                 </div>
-                 <button id="back-to-input-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
-                    &larr; Volver a Ingresar Texto
+                <button id="back-to-filter-btn"
+                    class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors text-sm">
+                    &larr; Volver a Selección de Materias
                 </button>
             </header>
+
+            <!-- Filtros de hora -->
             <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6">
-                <h3 class="font-bold text-lg mb-2 text-gray-900 dark:text-white">Borrar Opciones por Horario</h3>
+                <h3 class="font-bold text-sm mb-2 text-gray-900 dark:text-white uppercase tracking-wider">Filtros
+                    Rápidos</h3>
                 <div class="flex flex-wrap items-center gap-4">
-                    <select id="time-filter-condition" class="p-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600">
-                        <option value="during">Borrar si la clase ocurre DURANTE la hora</option>
-                        <option value="ends_after">Borrar si la clase termina DESPUÉS de las</option>
-                        <option value="starts_before">Borrar si la clase empieza ANTES de las</option>
+                    <select id="time-filter-condition"
+                        class="p-2 text-sm border rounded bg-white dark:bg-gray-700 dark:border-gray-600">
+                        <option value="during">Clase durante</option>
+                        <option value="ends_after">Termina después de</option>
+                        <option value="starts_before">Empieza antes de</option>
                     </select>
-                    <input id="time-filter-value" type="time" class="p-2 border rounded dark:bg-gray-700 dark:border-gray-600" value="12:00">
-                    <button id="apply-time-filter" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Aplicar Filtro</button>
-                    <button id="restore-options-btn" class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600">Restaurar</button>
+                    <input id="time-filter-value" type="time"
+                        class="p-2 text-sm border rounded dark:bg-gray-700 dark:border-gray-600" value="12:00">
+                    <button id="apply-time-filter"
+                        class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 text-sm font-medium">Aplicar</button>
+                    <button id="restore-options-btn"
+                        class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded hover:bg-yellow-600 text-sm">Restaurar
+                        Borrados</button>
                 </div>
             </div>
-            <div id="subjects-container" class="space-y-6"></div>
-            <div class="text-center mt-8">
-                <button id="generate-btn" class="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 transition-colors text-xl">
-                    Generar Combinaciones &rarr;
+
+            <div id="subjects-container" class="space-y-6 pb-20"></div>
+
+            <!-- Sticky Footer for Generate Button -->
+            <div
+                class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t dark:border-gray-700 p-4 flex justify-center shadow-lg z-10">
+                <button id="generate-btn"
+                    class="bg-indigo-600 text-white font-bold py-3 px-12 rounded-full hover:bg-indigo-700 transition-transform transform hover:scale-105 shadow-xl text-lg flex items-center">
+                    <span class="mr-2">⚡</span> Generar Horarios
                 </button>
             </div>
         </div>
 
-        <!-- Vista de Resultados -->
-        <div id="results-page" class="hidden container mx-auto p-4 md:p-8">
-             <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <!-- PANTALLA 5: RESULTADOS (Ya existente) -->
+        <div id="results-page" class="hidden">
+            <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                 <div>
-                    <h1 class="text-4xl font-bold text-blue-800 dark:text-blue-400">Paso 3: Explora tus Horarios</h1>
-                    <p class="text-lg text-gray-600 dark:text-gray-300 mt-2">Estos son los horarios posibles con tus selecciones.</p>
+                    <h1 class="text-3xl font-bold text-blue-800 dark:text-blue-400">Horarios Generados</h1>
+                    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">Explora las posibles combinaciones.</p>
                 </div>
-                <button id="back-to-selection-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
+                <button id="back-to-selection-btn"
+                    class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
                     &larr; Volver a Configurar
                 </button>
             </header>
-            <div id="results-controls" class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6 flex justify-between items-center">
+            <div id="results-controls"
+                class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6 flex justify-between items-center sticky top-0 z-20">
                 <div>
-                    <label class="font-bold text-gray-900 dark:text-white">Ordenar por:</label>
-                    <div class="mt-2 flex flex-wrap gap-4">
-                        <label class="flex items-center"><input type="radio" name="sort-order" value="combined" checked class="mr-2">Mejor Combinación</label>
-                        <label class="flex items-center"><input type="radio" name="sort-order" value="rating" class="mr-2">Calificación de Maestros</label>
-                        <label class="flex items-center"><input type="radio" name="sort-order" value="compactness" class="mr-2">Horario más Compacto</label>
+                    <label class="font-bold text-gray-900 dark:text-white text-sm uppercase">Ordenar por:</label>
+                    <div class="mt-1 flex flex-wrap gap-4 text-sm">
+                        <label class="flex items-center cursor-pointer"><input type="radio" name="sort-order"
+                                value="combined" checked class="mr-2"><span>Balanceado</span></label>
+                        <label class="flex items-center cursor-pointer"><input type="radio" name="sort-order"
+                                value="rating" class="mr-2"><span>Mejores Profes</span></label>
+                        <label class="flex items-center cursor-pointer"><input type="radio" name="sort-order"
+                                value="compactness" class="mr-2"><span>Menos Huecos</span></label>
                     </div>
                 </div>
-                <button id="restore-results-btn" class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600">Restaurar Último Descartado</button>
+                <button id="restore-results-btn"
+                    class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 text-sm">Restaurar
+                    Descartado</button>
             </div>
-            <main id="results-container"></main>
+            <main id="results-container" class="space-y-4"></main>
         </div>
+
     </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // --- ESTADO GLOBAL Y NAVEGACIÓN ---
-    const instructionsModal = document.getElementById('instructions-modal');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const mainContent = document.getElementById('main-content');
-    
-    const textInputPage = document.getElementById('text-input-page');
-    const selectionPage = document.getElementById('selection-page');
-    const resultsPage = document.getElementById('results-page');
-    
-    const parseTextBtn = document.getElementById('parse-text-btn');
-    const backToInputBtn = document.getElementById('back-to-input-btn');
-    const generateBtn = document.getElementById('generate-btn');
-    const backToSelectionBtn = document.getElementById('back-to-selection-btn');
-    const applyTimeFilterBtn = document.getElementById('apply-time-filter');
-    const restoreOptionsBtn = document.getElementById('restore-options-btn');
-    const restoreResultsBtn = document.getElementById('restore-results-btn');
-    const resultsControls = document.getElementById('results-controls');
-
-    let subjectColorMap = new Map();
-    let discardedOptionsHistory = [];
-    let lastDiscardedResult = null;
-    const colorPalette = [
-        { bg: 'dark:bg-blue-900/50 bg-blue-100', border: 'border-blue-500' }, { bg: 'dark:bg-green-900/50 bg-green-100', border: 'border-green-500' },
-        { bg: 'dark:bg-yellow-900/50 bg-yellow-100', border: 'border-yellow-500' }, { bg: 'dark:bg-red-900/50 bg-red-100', border: 'border-red-500' },
-        { bg: 'dark:bg-purple-900/50 bg-purple-100', border: 'border-purple-500' }, { bg: 'dark:bg-pink-900/50 bg-pink-100', border: 'border-pink-500' },
-        { bg: 'dark:bg-indigo-900/50 bg-indigo-100', border: 'border-indigo-500' }, { bg: 'dark:bg-teal-900/50 bg-teal-100', border: 'border-teal-500' },
-        { bg: 'dark:bg-orange-900/50 bg-orange-100', border: 'border-orange-500' },
-    ];
-    const ratingColors = { '5': 'bg-purple-500', '4': 'bg-green-500', '3': 'bg-orange-500', '2': 'bg-red-500', '1': 'bg-gray-400', '0': 'bg-black' };
-
-    closeModalBtn.addEventListener('click', () => {
-        instructionsModal.classList.add('hidden');
-        mainContent.classList.remove('hidden');
-    });
-
-    parseTextBtn.addEventListener('click', handleParseText);
-    generateBtn.addEventListener('click', handleGenerateCombinations);
-    applyTimeFilterBtn.addEventListener('click', applyTimeFilter);
-    restoreOptionsBtn.addEventListener('click', restoreLastOptions);
-    restoreResultsBtn.addEventListener('click', restoreLastResult);
-    
-    backToInputBtn.addEventListener('click', () => {
-        selectionPage.classList.add('hidden');
-        textInputPage.classList.remove('hidden');
-    });
-    backToSelectionBtn.addEventListener('click', () => {
-        resultsPage.classList.add('hidden');
-        selectionPage.classList.remove('hidden');
-    });
-    if (resultsControls) {
-        resultsControls.addEventListener('change', () => {
-            if (window.currentCombinations) {
-                displayResults(window.currentCombinations);
-            }
-        });
-    }
-
-    // --- FUNCIONES UTILITARIAS ---
-    function formatTime12h(time24) {
-        if (!time24) return '';
-        const [hours, minutes] = time24.split(':');
-        const h = parseInt(hours, 10);
-        const suffix = h >= 12 ? 'PM' : 'AM';
-        const h12 = h % 12 || 12;
-        return `${h12}:${minutes} ${suffix}`;
-    }
-
-    function copyToClipboard(text) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        alert('Copiado al portapapeles:\n' + text);
-    }
-
-    // --- LÓGICA DE PARSEO DE TEXTO ---
-    function handleParseText() {
-        const text = document.getElementById('course-text-input').value;
-        const parserStatus = document.getElementById('parser-status');
-        
-        if (!text.trim()) {
-            parserStatus.textContent = "El área de texto está vacía.";
-            return;
-        }
-
-        parserStatus.innerHTML = `<div class="flex justify-center items-center mt-4"><div class="loader border-4 border-gray-200 rounded-full w-8 h-8"></div><span class="ml-4">Analizando texto...</span></div>`;
-
-        try {
-            const courseData = parseCourseText(text);
-            if (courseData.length === 0) {
-                parserStatus.innerHTML = `<p class="text-red-500">No se pudo extraer información. Revisa el formato del texto.</p>`;
-                return;
-            }
-            
-            renderSelectionPage(courseData);
-            textInputPage.classList.add('hidden');
-            selectionPage.classList.remove('hidden');
-            parserStatus.innerHTML = '';
-
-        } catch (error) {
-            console.error("Error parsing text:", error);
-            parserStatus.textContent = "Error al analizar el texto. Verifica el formato.";
-        }
-    }
-
-    function parseCourseText(text) {
-        const lines = text.split('\n').filter(line => line.trim() !== '');
-        const groupedByNrc = {};
-        const dayMap = { 'L': 'Lunes', 'M': 'Miercoles', 'A': 'Martes', 'J': 'Jueves', 'V': 'Viernes', 'S': 'Sábado' };
-        
-        lines.forEach(line => {
-            line = line.replace(/\u00A0/g, ' ').trim();
-            const regex = /^(\d{5})\s+([A-Z]+\s*\d+)\s+(.+?)\s+(\S+)\s+([LMAJVS])\s+(\d{4}-\d{4})\s+(.*)$/;
-            const match = line.match(regex);
-
-            if (!match) return;
-
-            const [, nrc, clave, materia, seccion, diaChar, hora, remaining] = match;
-            
-            const remainingParts = remaining.trim().split(/\s+/);
-            const salon = remainingParts.pop();
-            const profesor = remainingParts.join(' ');
-
-            if (!profesor) return;
-
-            if (!groupedByNrc[nrc]) {
-                groupedByNrc[nrc] = { nrc: nrc.trim(), materia: materia.trim(), profesor: profesor.trim(), horarios: [] };
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const debugLog = document.getElementById('debug-log');
+            // debugLog.classList.remove('hidden'); // Uncomment to show always
+            function log(msg) {
+                console.log(msg);
+                debugLog.innerHTML += `<div>${new Date().toLocaleTimeString()} - ${msg}</div>`;
+                // Show if error
+                if (msg.startsWith("Error") || msg.startsWith("Fatal")) debugLog.classList.remove('hidden');
             }
 
-            const newHorario = { dia: dayMap[diaChar], inicio: `${hora.substring(0, 2)}:${hora.substring(2, 4)}`, fin: `${hora.substring(5, 7)}:${hora.substring(7, 9)}`, salon: salon.trim() };
-            if (!groupedByNrc[nrc].horarios.some(h => h.dia === newHorario.dia && h.inicio === newHorario.inicio)) {
-                groupedByNrc[nrc].horarios.push(newHorario);
-            }
-        });
+            log("DOM Loaded.");
 
-        return Object.values(groupedByNrc);
-    }
-    
-    // --- LÓGICA DE LA PÁGINA DE SELECCIÓN ---
-    function renderSelectionPage(courseData) {
-        const subjectsContainer = document.getElementById('subjects-container');
-        const subjects = {};
-        courseData.forEach(course => {
-            if (!subjects[course.materia]) subjects[course.materia] = [];
-            subjects[course.materia].push(course);
-        });
+            // --- REFERENCIAS DOM ---
+            const folderInput = document.getElementById('folder-input');
+            const loadingFolder = document.getElementById('loading-folder');
+            const folderError = document.getElementById('folder-error');
 
-        subjectsContainer.innerHTML = '';
-        subjectColorMap.clear();
-        discardedOptionsHistory = [];
-        updateRestoreOptionsButton();
-        let colorIndex = 0;
+            const folderInputPage = document.getElementById('folder-input-page');
+            const careerSelectionPage = document.getElementById('career-selection-page');
+            const subjectFilterPage = document.getElementById('subject-filter-page');
+            const selectionPage = document.getElementById('selection-page');
+            const resultsPage = document.getElementById('results-page');
 
-        Object.keys(subjects).sort().forEach(materia => {
-            if (!subjectColorMap.has(materia)) {
-                subjectColorMap.set(materia, colorPalette[colorIndex % colorPalette.length]);
-                colorIndex++;
-            }
-            const color = subjectColorMap.get(materia);
+            const careersList = document.getElementById('careers-list');
+            const specialtiesList = document.getElementById('specialties-list');
+            const checkboxContainer = document.getElementById('checkbox-container');
+            const subjectSearch = document.getElementById('subject-search');
+            const selectedCountLabel = document.getElementById('selected-count');
 
-            const subjectCard = document.createElement('div');
-            subjectCard.className = 'subject-card bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg';
-            subjectCard.innerHTML = `<div class="flex items-center mb-4"><span class="w-4 h-4 rounded-full ${color.bg} border ${color.border}"></span><h2 class="text-xl md:text-2xl font-bold text-blue-700 dark:text-blue-400 ml-3">${materia}</h2></div><div class="options-container overflow-x-auto"></div>`;
-            
-            const optionsContainer = subjectCard.querySelector('.options-container');
-            const tableContainer = document.createElement('div');
-            tableContainer.className = "w-full";
+            const confirmSubjectsBtn = document.getElementById('confirm-subjects-btn');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            const deselectAllBtn = document.getElementById('deselect-all-btn');
+            const backToFilterBtn = document.getElementById('back-to-filter-btn');
+            const generateBtn = document.getElementById('generate-btn');
+            const backToSelectionBtn = document.getElementById('back-to-selection-btn');
+            const resetAppBtn = document.getElementById('reset-app-btn');
 
-            const header = document.createElement('div');
-            header.className = "hidden md:grid md:grid-cols-12 gap-4 bg-gray-100 dark:bg-gray-700 p-3 rounded-t-lg font-semibold text-sm text-gray-600 dark:text-gray-300";
-            header.innerHTML = `<span class="col-span-4">Profesor</span><span class="col-span-1">NRC</span><span class="col-span-3">Horario</span><span class="col-span-2">Calificación</span><span class="col-span-2 text-center">Acciones</span>`;
-            tableContainer.appendChild(header);
+            // --- ESTADO ---
+            let directoryStructure = {};
+            let currentRawData = [];
+            let selectedSubjects = new Set();
+            let discardedResultsHistory = [];
 
-            const bodyContainer = document.createElement('div');
-            bodyContainer.className = "space-y-4 md:space-y-0";
-            
-            subjects[materia].forEach(course => {
-                const row = document.createElement('div');
-                row.className = 'teacher-option grid grid-cols-2 md:grid-cols-12 gap-4 p-3 border-b dark:border-gray-700 items-center hover:bg-gray-50 dark:hover:bg-gray-700/50';
-                row.dataset.course = JSON.stringify(course);
-                
-                const horarioStr = course.horarios.map(h => `${h.dia.substring(0,3)} ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)}`).join('<br>');
-                
-                row.innerHTML = `
-                    <div class="md:col-span-4 col-span-2 flex items-center">
-                        <span class="rating-indicator w-3 h-3 rounded-full mr-3 flex-shrink-0"></span>
-                        <div><span class="md:hidden font-bold">Profesor: </span>${course.profesor}</div>
-                    </div>
-                    <div class="md:col-span-1 col-span-1"><span class="md:hidden font-bold">NRC: </span>${course.nrc}</div>
-                    <div class="md:col-span-3 col-span-2 text-sm"><span class="md:hidden font-bold">Horario: </span><br class="md:hidden">${horarioStr}</div>
-                    <div class="md:col-span-2 col-span-1">
-                        <select class="calificacion-maestro p-2 border rounded w-full bg-white dark:bg-gray-700 dark:border-gray-600 text-sm">
-                            <option value="5">Excelente</option><option value="4">Bueno</option><option value="3">Regular</option><option value="2">Malo</option><option value="1" selected>Nulo</option><option value="0">Horrible</option>
-                        </select>
-                    </div>
-                    <div class="md:col-span-2 col-span-2 flex justify-center items-center gap-2">
-                        <button class="copy-btn text-blue-500 hover:text-blue-700" title="Copiar Info"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
-                        <button class="remove-btn text-red-500 hover:text-red-700 font-bold text-2xl" title="Eliminar Opción">&times;</button>
-                    </div>`;
-                bodyContainer.appendChild(row);
+            // --- EVENT LISTENERS ---
+            folderInput.addEventListener('change', handleFolderSelect);
 
-                const ratingSelect = row.querySelector('.calificacion-maestro');
-                const ratingIndicator = row.querySelector('.rating-indicator');
-                
-                const setIndicatorColor = (indicator, value) => {
-                    indicator.className = `rating-indicator w-3 h-3 rounded-full mr-3 flex-shrink-0 ${ratingColors[value] || 'bg-gray-400'}`;
-                };
+            // INICIO AUTOMÁTICO
+            setTimeout(() => {
+                log("Calling loadCatalog...");
+                loadCatalog();
+            }, 500);
 
-                ratingSelect.addEventListener('change', (e) => setIndicatorColor(ratingIndicator, e.target.value));
-                setIndicatorColor(ratingIndicator, ratingSelect.value);
+            // Navegación Básica
+            resetAppBtn.addEventListener('click', () => location.reload()); // Simple reset
 
-                row.querySelector('.remove-btn').addEventListener('click', () => {
-                    discardedOptionsHistory.push([row]);
-                    row.style.display = 'none';
-                    updateRestoreOptionsButton();
-                    updateConflictHighlighting();
-                });
-                row.querySelector('.copy-btn').addEventListener('click', () => {
-                    const info = `Materia: ${course.materia}\nProfesor: ${course.profesor}\nNRC: ${course.nrc}`;
-                    copyToClipboard(info);
-                });
+            confirmSubjectsBtn.addEventListener('click', () => {
+                if (selectedSubjects.size === 0) {
+                    alert("Selecciona al menos una materia para continuar.");
+                    return;
+                }
+                // Filtrar datos y pasar a la siguiente pagina
+                const filteredData = currentRawData.filter(item => selectedSubjects.has(item.materia));
+                renderSelectionPage(filteredData);
+                navigateTo(subjectFilterPage, selectionPage);
             });
-            
-            tableContainer.appendChild(bodyContainer);
-            optionsContainer.appendChild(tableContainer);
-            subjectsContainer.appendChild(subjectCard);
-        });
-    }
 
-    function applyTimeFilter() {
-        const condition = document.getElementById('time-filter-condition').value;
-        const timeValue = document.getElementById('time-filter-value').value;
-        if (!timeValue) {
-            alert('Por favor, selecciona una hora para el filtro.');
-            return;
-        }
-        const timeInt = parseInt(timeValue.replace(':', ''));
+            backToFilterBtn.addEventListener('click', () => navigateTo(selectionPage, subjectFilterPage));
+            backToSelectionBtn.addEventListener('click', () => navigateTo(resultsPage, selectionPage));
 
-        const subjectsToEliminate = new Set();
-        const optionsToRemove = [];
+            // Buscador y Selección de Materias
+            subjectSearch.addEventListener('input', (e) => filterCheckboxes(e.target.value));
+            selectAllBtn.addEventListener('click', () => toggleAllCheckboxes(true));
+            deselectAllBtn.addEventListener('click', () => toggleAllCheckboxes(false));
 
-        document.querySelectorAll('.subject-card').forEach(card => {
-            const materia = card.querySelector('h2').textContent;
-            const teacherOptions = card.querySelectorAll('.teacher-option');
-            let visibleOptionsCount = Array.from(teacherOptions).filter(opt => opt.style.display !== 'none').length;
-            
-            teacherOptions.forEach(row => {
-                if (row.style.display === 'none') return;
-                const course = JSON.parse(row.dataset.course);
-                let shouldRemove = false;
-                if (condition === 'ends_after') {
-                    if (course.horarios.some(h => parseInt(h.fin.replace(':', '')) > timeInt)) shouldRemove = true;
-                } else if (condition === 'starts_before') {
-                    if (course.horarios.some(h => parseInt(h.inicio.replace(':', '')) < timeInt)) shouldRemove = true;
-                } else if (condition === 'during') {
-                    if (course.horarios.some(h => {
-                        const start = parseInt(h.inicio.replace(':', ''));
-                        const end = parseInt(h.fin.replace(':', ''));
-                        return timeInt >= start && timeInt < end;
-                    })) {
-                        shouldRemove = true;
+            // Generacion
+            generateBtn.addEventListener('click', handleGenerateCombinations);
+
+            // Utilities UI
+            function navigateTo(from, to) {
+                from.classList.add('hidden');
+                to.classList.remove('hidden');
+                window.scrollTo(0, 0);
+            }
+
+            // --- MANEJO DE ARCHIVOS Y CARPETAS ---
+            // --- MANEJO DE ARCHIVOS Y CARPETAS ---
+            async function loadCatalog() {
+                loadingFolder.classList.remove('hidden');
+                folderError.classList.add('hidden');
+                if (folderInputPage) {
+                    const btn = folderInputPage.querySelector('label');
+                    if (btn) btn.classList.add('hidden');
+                }
+
+                try {
+                    // Small delay to ensure script load if race condition (rare in head)
+                    await new Promise(r => setTimeout(r, 100));
+
+                    if (typeof window.CARRERAS_DATA === 'undefined') {
+                        throw new Error("No se han cargado los datos. Asegúrate de que 'carreras.js' existe y se ha generado correctamente.");
                     }
-                }
-                if (shouldRemove) {
-                    visibleOptionsCount--;
-                    optionsToRemove.push(row);
-                }
-            });
 
-            if (visibleOptionsCount === 0 && teacherOptions.length > 0) {
-                subjectsToEliminate.add(materia);
-            }
-        });
+                    const data = window.CARRERAS_DATA;
+                    directoryStructure = data;
 
-        if (subjectsToEliminate.size > 0) {
-            const subjectList = Array.from(subjectsToEliminate).join(', ');
-            if (!confirm(`Esta acción eliminará todas las opciones para la(s) materia(s): ${subjectList}. ¿Deseas continuar?`)) {
-                return;
-            }
-        }
-        
-        if (optionsToRemove.length > 0) {
-            discardedOptionsHistory.push(optionsToRemove);
-            optionsToRemove.forEach(row => row.style.display = 'none');
-            updateRestoreOptionsButton();
-            updateConflictHighlighting();
-        }
-    }
-    
-    function updateRestoreOptionsButton() {
-        if(discardedOptionsHistory.length > 0){
-            const lastSetCount = discardedOptionsHistory[discardedOptionsHistory.length - 1].length;
-            restoreOptionsBtn.textContent = `Restaurar (${lastSetCount})`;
-            restoreOptionsBtn.classList.remove('hidden');
-        } else {
-            restoreOptionsBtn.classList.add('hidden');
-        }
-    }
-    
-    function restoreLastOptions() {
-        if (discardedOptionsHistory.length > 0) {
-            const lastSet = discardedOptionsHistory.pop();
-            lastSet.forEach(row => row.style.display = 'grid');
-            updateRestoreOptionsButton();
-            updateConflictHighlighting();
-        }
-    }
-
-    function updateConflictHighlighting() {
-        // Clear previous highlights
-        document.querySelectorAll('.teacher-option').forEach(row => {
-            row.classList.remove('conflict-highlight');
-            row.title = '';
-        });
-
-        const lockedInCourses = [];
-        document.querySelectorAll('.subject-card').forEach(card => {
-            const visibleOptions = Array.from(card.querySelectorAll('.teacher-option')).filter(opt => opt.style.display !== 'none');
-            if (visibleOptions.length === 1) {
-                lockedInCourses.push(JSON.parse(visibleOptions[0].dataset.course));
-            }
-        });
-
-        if (lockedInCourses.length === 0) return;
-
-        document.querySelectorAll('.teacher-option').forEach(row => {
-            if (row.style.display === 'none') return;
-            const currentCourse = JSON.parse(row.dataset.course);
-            
-            // Don't highlight the locked-in course itself
-            if (lockedInCourses.some(locked => locked.nrc === currentCourse.nrc)) return;
-
-            for (const lockedCourse of lockedInCourses) {
-                if (hasConflict([currentCourse], lockedCourse)) {
-                    row.classList.add('conflict-highlight');
-                    row.title = `Conflicto con ${lockedCourse.materia} (${lockedCourse.profesor})`;
-                    break; 
-                }
-            }
-        });
-    }
-
-    // --- LÓGICA DE GENERACIÓN Y RESULTADOS ---
-    function handleGenerateCombinations() {
-        const coursesBySubject = {};
-        document.querySelectorAll('.subject-card').forEach(card => {
-            const materia = card.querySelector('h2').textContent;
-            const options = [];
-            card.querySelectorAll('.teacher-option').forEach(row => {
-                if(row.style.display !== 'none') {
-                    const course = JSON.parse(row.dataset.course);
-                    course.calificacion_maestro = parseInt(row.querySelector('.calificacion-maestro').value);
-                    options.push(course);
-                }
-            });
-            if (options.length > 0) coursesBySubject[materia] = options;
-        });
-
-        const courseList = Object.values(coursesBySubject);
-        if (courseList.length === 0) {
-            alert("No hay materias seleccionadas para generar combinaciones.");
-            return;
-        }
-
-        resultsPage.querySelector('#results-container').innerHTML = `<div class="flex justify-center items-center mt-8"><div class="loader border-4 border-gray-200 rounded-full w-12 h-12"></div></div><p class="text-center text-gray-600 dark:text-gray-300 mt-4">Generando combinaciones...</p>`;
-        selectionPage.classList.add('hidden');
-        resultsPage.classList.remove('hidden');
-        lastDiscardedResult = null;
-        updateRestoreResultButton();
-
-        setTimeout(() => {
-            const combinations = [];
-            findCombinations(courseList, 0, [], combinations);
-            window.currentCombinations = combinations;
-            displayResults(combinations);
-        }, 50);
-    }
-    
-    function findCombinations(subjects, subjectIndex, currentCombination, allCombinations) {
-        if (subjectIndex === subjects.length) {
-            allCombinations.push([...currentCombination]);
-            return;
-        }
-        subjects[subjectIndex].forEach(course => {
-            if (!hasConflict(currentCombination, course)) {
-                currentCombination.push(course);
-                findCombinations(subjects, subjectIndex + 1, currentCombination, allCombinations);
-                currentCombination.pop();
-            }
-        });
-    }
-
-    function hasConflict(combination, newCourse) {
-        for (const existingCourse of combination) {
-            for (const t1 of existingCourse.horarios) {
-                for (const t2 of newCourse.horarios) {
-                    if (t1.dia === t2.dia) {
-                        const start1 = parseInt(t1.inicio.replace(':', ''));
-                        const end1 = parseInt(t1.fin.replace(':', ''));
-                        const start2 = parseInt(t2.inicio.replace(':', ''));
-                        const end2 = parseInt(t2.fin.replace(':', ''));
-                        if (Math.max(start1, start2) < Math.min(end1, end2)) return true;
+                    const careers = Object.keys(directoryStructure);
+                    if (careers.length === 0) {
+                        throw new Error("El catálogo está vacío.");
                     }
+
+                    renderCareerList(careers);
+
+                    // Éxito: Ocultar loading y mostrar selección
+                    loadingFolder.classList.add('hidden');
+                    navigateTo(folderInputPage, careerSelectionPage);
+
+                } catch (err) {
+                    log(`Error in loadCatalog: ${err.message}`);
+                    loadingFolder.classList.add('hidden');
+                    const msgEl = document.getElementById('folder-error-msg');
+                    if (msgEl) msgEl.textContent = err.message;
+                    folderError.classList.remove('hidden');
                 }
             }
-        }
-        return false;
-    }
-    
-    function calculateCompactnessScore(combination) {
-        let totalGap = 0;
-        const days = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
-        
-        days.forEach(day => {
-            const classesToday = combination.flatMap(c => c.horarios.filter(h => h.dia === day));
-            if (classesToday.length < 2) return;
 
-            const times = classesToday.map(h => ({ start: parseInt(h.inicio.replace(':', '')), end: parseInt(h.fin.replace(':', '')) })).sort((a,b) => a.start - b.start);
+            // Función placeholder por si el listener antiguo sigue vivo
+            function handleFolderSelect(event) { console.log("Manual override"); }
 
-            for (let i = 0; i < times.length - 1; i++) {
-                const gap = times[i+1].start - times[i].end;
-                if (gap > 0) totalGap += gap;
-            }
-        });
-        return totalGap / 100;
-    }
+            function renderCareerList(careers) {
+                log(`Rendering careers: ${careers.length}`);
+                careersList.innerHTML = '';
 
-    function getDayScheduleRange(combination) {
-        let minTime = 2400;
-        let maxTime = 0;
-        combination.forEach(course => {
-            course.horarios.forEach(h => {
-                const start = parseInt(h.inicio.replace(':', ''));
-                const end = parseInt(h.fin.replace(':', ''));
-                if (start < minTime) minTime = start;
-                if (end > maxTime) maxTime = end;
-            });
-        });
-
-        if (minTime === 2400) return 'N/A';
-
-        const format = (timeInt) => {
-            const timeStr = timeInt.toString().padStart(4, '0');
-            return formatTime12h(`${timeStr.substring(0,2)}:${timeStr.substring(2,4)}`);
-        };
-
-        return `${format(minTime)} - ${format(maxTime)}`;
-    }
-
-    function displayResults(combinations) {
-        const resultsContainer = document.getElementById('results-container');
-        if (combinations.length === 0) {
-            resultsContainer.innerHTML = '<p class="text-center text-lg mt-8">No se encontraron combinaciones de horarios compatibles con las opciones seleccionadas.</p>';
-            restoreResultsBtn.classList.add('hidden');
-            return;
-        }
-        
-        const sortOrder = document.querySelector('input[name="sort-order"]:checked').value;
-
-        const ratedCombinations = combinations.map(combo => {
-            const avgRating = combo.reduce((acc, course) => acc + course.calificacion_maestro, 0) / combo.length;
-            const compactnessScore = calculateCompactnessScore(combo);
-            const combinedScore = (avgRating * 2.5) - compactnessScore;
-            const dayRange = getDayScheduleRange(combo);
-            const hasHorrible = combo.some(c => c.calificacion_maestro === 0);
-
-            let qualityClass = 'malo';
-            if (hasHorrible) {
-                qualityClass = 'malo';
-            } else if (avgRating >= 4.5) {
-                qualityClass = 'excelente';
-            } else if (avgRating >= 3.5) {
-                qualityClass = 'bueno';
-            } else if (avgRating >= 2.5) {
-                qualityClass = 'regular';
-            }
-            return { combo, avgRating, compactnessScore, combinedScore, dayRange, qualityClass };
-        });
-        
-        if (sortOrder === 'rating') ratedCombinations.sort((a, b) => b.avgRating - a.avgRating);
-        else if (sortOrder === 'compactness') ratedCombinations.sort((a, b) => a.compactnessScore - b.compactnessScore);
-        else ratedCombinations.sort((a, b) => b.combinedScore - a.combinedScore);
-
-
-        resultsContainer.innerHTML = `<h3 class="text-xl font-bold mb-4">${ratedCombinations.length} combinaciones encontradas</h3>`;
-        
-        ratedCombinations.forEach((item, index) => {
-            const resultDiv = document.createElement('div');
-            resultDiv.className = `schedule-card border-l-8 p-4 rounded-lg mb-4 bg-white dark:bg-gray-800 shadow-md ${item.qualityClass}`;
-            resultDiv.innerHTML = `
-                <div class="flex flex-wrap justify-between items-center gap-4">
-                    <div>
-                        <h4 class="text-xl font-bold text-blue-800 dark:text-blue-400">Combinación #${index + 1}</h4>
-                        <span class="font-semibold text-gray-700 dark:text-gray-300 mr-4" title="Calificación promedio de maestros">Calificación: ${item.avgRating.toFixed(2)}</span>
-                        <span class="font-semibold text-gray-700 dark:text-gray-300" title="Rango de horas del día">Horario del día: ${item.dayRange}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                         <button class="download-btn text-cyan-500 hover:text-cyan-700" title="Descargar como JPG"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg></button>
-                         <button class="export-btn text-green-500 hover:text-green-700" title="Exportar a Texto"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></button>
-                         <button class="discard-btn text-red-500 hover:text-red-700" title="Descartar"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                         <button class="view-btn bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 text-sm" data-index="${index}">Ver Horario</button>
-                    </div>
-                </div>
-                <div class="schedule-details mt-4" id="schedule-${index}" style="display: none;"></div>`;
-            resultsContainer.appendChild(resultDiv);
-        });
-
-        document.querySelectorAll('.view-btn').forEach((btn, i) => btn.addEventListener('click', () => toggleScheduleView(ratedCombinations[i].combo, i)));
-        document.querySelectorAll('.discard-btn').forEach((btn, i) => btn.addEventListener('click', () => discardCard(btn.closest('.schedule-card'))));
-        document.querySelectorAll('.export-btn').forEach((btn, i) => btn.addEventListener('click', () => exportCombination(ratedCombinations[i].combo)));
-        document.querySelectorAll('.download-btn').forEach((btn, i) => btn.addEventListener('click', () => downloadSchedule(i)));
-    }
-    
-    function toggleScheduleView(combination, index) {
-        const scheduleContainer = document.getElementById(`schedule-${index}`);
-        const btn = document.querySelector(`.view-btn[data-index="${index}"]`);
-        if (scheduleContainer.style.display === 'none') {
-            scheduleContainer.innerHTML = generateTableHTML(combination);
-            scheduleContainer.style.display = 'block';
-            btn.textContent = 'Ocultar';
-        } else {
-            scheduleContainer.style.display = 'none';
-            btn.textContent = 'Ver Horario';
-        }
-    }
-
-    function discardCard(cardElement) {
-        lastDiscardedResult = cardElement;
-        cardElement.classList.add('hidden');
-        updateRestoreResultButton();
-    }
-
-    function restoreLastResult() {
-        if (lastDiscardedResult) {
-            lastDiscardedResult.classList.remove('hidden');
-            lastDiscardedResult = null;
-            updateRestoreResultButton();
-        }
-    }
-    
-    function updateRestoreResultButton() {
-        if (lastDiscardedResult) {
-            restoreResultsBtn.classList.remove('hidden');
-        } else {
-            restoreResultsBtn.classList.add('hidden');
-        }
-    }
-
-    function exportCombination(combination) {
-        let text = "Horario Seleccionado:\n\n";
-        combination.forEach(course => {
-            text += `Materia: ${course.materia}\n`;
-            text += `Profesor: ${course.profesor}\n`;
-            text += `NRC: ${course.nrc}\n`;
-            text += "Horarios:\n";
-            course.horarios.forEach(h => {
-                text += `  - ${h.dia}: ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)} (Salón: ${h.salon})\n`;
-            });
-            text += "--------------------------------\n\n";
-        });
-        copyToClipboard(text);
-    }
-
-    function downloadSchedule(index) {
-        const scheduleContainer = document.getElementById(`schedule-${index}`);
-        const wasHidden = scheduleContainer.style.display === 'none';
-        
-        // Ensure the element is visible for capture
-        if (wasHidden) {
-            scheduleContainer.style.display = 'block';
-        }
-
-        const elementToCapture = scheduleContainer; // Capture the whole container
-        if (elementToCapture) {
-            html2canvas(elementToCapture, { 
-                scale: 2, 
-                backgroundColor: '#111827' // dark:bg-gray-900
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'mi_horario.jpg';
-                link.href = canvas.toDataURL('image/jpeg', 0.9);
-                link.click();
-                if(wasHidden) {
-                    scheduleContainer.style.display = 'none';
+                if (careers.length === 0) {
+                    log("No careers to render!");
+                    careersList.innerHTML = '<li class="text-red-500">No se encontraron carreras.</li>';
+                    return;
                 }
-            });
-        }
-    }
-    
-    function generateTableHTML(combination) {
-        let minHour = 24;
-        let maxHour = 0;
-        combination.forEach(course => {
-            course.horarios.forEach(schedule => {
-                const startHour = parseInt(schedule.inicio.split(':')[0]);
-                const endHour = Math.ceil(parseInt(schedule.fin.replace(':', '')) / 100);
-                if (startHour < minHour) minHour = startHour;
-                if (endHour > maxHour) maxHour = endHour;
-            });
-        });
-        
-        minHour = Math.max(7, minHour);
-        maxHour = Math.min(21, maxHour);
 
-        const hours = Array.from({length: maxHour - minHour}, (_, i) => i + minHour);
-        
-        let tableHTML = '<div class="overflow-x-auto"><table class="min-w-full border-collapse border border-gray-300 dark:border-gray-700"><thead><tr class="bg-gray-200 dark:bg-gray-700"><th class="border dark:border-gray-600 p-2 text-sm">Hora</th><th class="border dark:border-gray-600 p-2 text-sm">Lunes</th><th class="border dark:border-gray-600 p-2 text-sm">Martes</th><th class="border dark:border-gray-600 p-2 text-sm">Miércoles</th><th class="border dark:border-gray-600 p-2 text-sm">Jueves</th><th class="border dark:border-gray-600 p-2 text-sm">Viernes</th></tr></thead><tbody>';
-        for (const hour of hours) {
-            const time12h = formatTime12h(`${hour.toString().padStart(2, '0')}:00`);
-            const nextTime12h = formatTime12h(`${(hour + 1).toString().padStart(2, '0')}:00`);
-            tableHTML += `<tr class="text-center"><td class="border dark:border-gray-600 p-2 text-xs bg-gray-50 dark:bg-gray-800 font-semibold">${time12h} - ${nextTime12h}</td>`;
-            ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'].forEach(day => {
-                let cellContent = '';
-                combination.forEach(course => {
-                    const color = subjectColorMap.get(course.materia) || { bg: 'bg-gray-100', border: 'border-gray-500' };
-                    course.horarios.forEach(schedule => {
-                        if (schedule.dia === day) {
-                            const start = parseInt(schedule.inicio.replace(':', ''));
-                            const end = parseInt(schedule.fin.replace(':', ''));
-                            if (hour * 100 >= start && hour * 100 < end) {
-                                cellContent += `<div class="${color.bg} border-l-4 ${color.border} p-1.5 rounded mb-1 text-left">
-                                    <strong class="font-bold text-gray-800 dark:text-gray-100 block text-[11px]">${course.materia}</strong>
-                                    <span class="block text-[10px] text-gray-700 dark:text-gray-300">${course.profesor}</span>
-                                    <span class="block text-[10px] text-gray-600 dark:text-gray-400 mt-1">Salón: ${schedule.salon || 'N/A'} | NRC: ${course.nrc}</span>
-                                </div>`;
-                            }
+                careers.sort().forEach(career => {
+                    // log(`Adding career: ${career}`); // Uncomment if too verbose
+                    const li = document.createElement('li');
+                    const btn = document.createElement('button');
+                    btn.className = "w-full text-left px-4 py-3 rounded-md hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:bg-blue-100 dark:focus:bg-gray-600 font-medium text-gray-700 dark:text-gray-200 border border-transparent hover:border-blue-200";
+                    btn.textContent = career;
+                    btn.addEventListener('click', () => {
+                        // Highlight selected
+                        document.querySelectorAll('#careers-list button').forEach(b => b.classList.remove('bg-blue-100', 'dark:bg-gray-600', 'border-blue-500'));
+                        btn.classList.add('bg-blue-100', 'dark:bg-gray-600', 'border-blue-500');
+                        renderSpecialtyList(career);
+                    });
+                    li.appendChild(btn);
+                    careersList.appendChild(li);
+                });
+                log("Career list finished rendering.");
+            }
+
+            function renderSpecialtyList(careerName) {
+                specialtiesList.innerHTML = '';
+                const files = directoryStructure[careerName];
+
+                files.forEach(fileObj => {
+                    const li = document.createElement('li');
+                    const btn = document.createElement('button');
+                    // fileObj es {name: "...", content: "..."}
+                    const displayName = fileObj.name.replace('.csv', '').replace(/_/g, ' ');
+
+                    btn.className = "w-full text-left px-4 py-3 rounded-md hover:bg-green-50 dark:hover:bg-gray-700 transition-colors focus:outline-none font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-green-400 group";
+                    btn.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <span>${displayName}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </div>`;
+
+                    btn.addEventListener('click', () => loadCSVContent(fileObj.content));
+                    li.appendChild(btn);
+                    specialtiesList.appendChild(li);
+                });
+            }
+
+            function loadCSVContent(csvText) {
+                try {
+                    currentRawData = parseCSVContent(csvText);
+                    if (currentRawData.length === 0) throw new Error("Archivo vacío o formato incorrecto");
+
+                    renderSubjectSelection(currentRawData);
+                    navigateTo(careerSelectionPage, subjectFilterPage);
+                } catch (error) {
+                    alert("Error al procesar el archivo CSV: " + error.message);
+                }
+            }
+
+            // fetchCSV ya no se usa
+            function processCSV(file) { /* Deprecated */ }
+
+            // --- PARSING CSV ---
+            function parseCSVContent(text) {
+                const lines = text.split('\n');
+                const data = [];
+                // Mapping dias BUAP comunes
+                const dayMap = { 'L': 'Lunes', 'M': 'Miercoles', 'A': 'Martes', 'J': 'Jueves', 'V': 'Viernes', 'S': 'Sábado' };
+
+                // Asumimos que la primera linea es header o validamos formato
+                // Formato esperado: NRC,Clave,Materia,Secc,Dias,Hora,Profesor,Salon
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    // Ignorar headers o lineas vacias
+                    if (!line || line.startsWith('NRC,')) continue;
+
+                    // Parse CSV line (simple split by comma, ignoring quotes details for now as per sample)
+                    // El sample no usa comillas complejas, split directo es seguro para este caso especifico
+                    // Puede haber comas en nombres? El sample usa format: 
+                    // 48444,CCOS 005,Ensamblador,OO1,L,1000-1059,RODRIGUEZ - PEDROZA BERENICE,1CCO4/303
+
+                    // En caso real, usar un regex CSV parser si hay campos con comas
+                    const parts = line.split(',');
+                    if (parts.length < 8) continue;
+
+                    const nrc = parts[0].trim();
+                    // Clave = parts[1]
+                    const materia = parts[2].trim();
+                    // Seccion = parts[3]
+                    const diasRaw = parts[4].trim(); // EJ: "L", "AJ"
+                    const horaRaw = parts[5].trim(); // "1000-1059"
+                    const profesor = parts[6].trim();
+                    const salon = parts[7].trim();
+
+                    // Procesar Dias Combinados (e.g., "AJ" -> Martes y Jueves)
+                    const dias = diasRaw.split(''); // ['A', 'J']
+
+                    const horarios = [];
+                    dias.forEach(dChar => {
+                        const dayName = dayMap[dChar];
+                        if (dayName && horaRaw.includes('-')) {
+                            const timeParts = horaRaw.split('-');
+                            horarios.push({
+                                dia: dayName,
+                                inicio: formatRawTime(timeParts[0]),
+                                fin: formatRawTime(timeParts[1]),
+                                salon: salon
+                            });
                         }
                     });
+
+                    if (horarios.length > 0) {
+                        // Check if exists (same NRC might appear multiple times for different days in original CSV?)
+                        // El sample tiene lineas separadas para DIAS:
+                        // 48444... L ...
+                        // 48444... A ...
+
+                        // Buscar si ya existe este NRC en nuestra lista acumulada data
+                        let existing = data.find(c => c.nrc === nrc);
+                        if (!existing) {
+                            data.push({
+                                nrc,
+                                materia, // Limpiar nombres "Materia - Sede" si fuera necesario
+                                profesor,
+                                horarios: horarios
+                            });
+                        } else {
+                            // Merge horarios
+                            existing.horarios.push(...horarios);
+                        }
+                    }
+                }
+                return data;
+            }
+
+            function formatRawTime(raw) {
+                // 1000 -> 10:00, 0900 -> 09:00
+                if (raw.length === 4) {
+                    return `${raw.substring(0, 2)}:${raw.substring(2, 4)}`;
+                }
+                return raw; // Fallback
+            }
+
+            // --- SELECCIÓN DE MATERIAS (UI) ---
+            function renderSubjectSelection(data) {
+                checkboxContainer.innerHTML = '';
+                selectedSubjects.clear();
+                const uniqueSubjects = [...new Set(data.map(d => d.materia))].sort();
+
+                uniqueSubjects.forEach(subject => {
+                    const label = document.createElement('label');
+                    label.className = "flex items-center space-x-3 p-3 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border dark:border-gray-600 transition-colors";
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = subject;
+                    checkbox.className = "form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300";
+
+                    checkbox.addEventListener('change', (e) => {
+                        if (e.target.checked) selectedSubjects.add(subject);
+                        else selectedSubjects.delete(subject);
+                        updateCount();
+                    });
+
+                    const span = document.createElement('span');
+                    span.textContent = subject;
+                    span.className = "text-sm text-gray-700 dark:text-gray-200 select-none";
+
+                    label.appendChild(checkbox);
+                    label.appendChild(span);
+                    checkboxContainer.appendChild(label);
                 });
-                tableHTML += `<td class="border dark:border-gray-600 p-1 align-top">${cellContent}</td>`;
+                updateCount();
+            }
+
+            function updateCount() {
+                selectedCountLabel.textContent = `${selectedSubjects.size} materias seleccionadas`;
+            }
+
+            function filterCheckboxes(query) {
+                const q = query.toLowerCase();
+                const labels = checkboxContainer.querySelectorAll('label');
+                labels.forEach(lbl => {
+                    const text = lbl.querySelector('span').textContent.toLowerCase();
+                    lbl.style.display = text.includes(q) ? 'flex' : 'none';
+                });
+            }
+
+            function toggleAllCheckboxes(checked) {
+                const checkboxes = checkboxContainer.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    // Solo modificar visibles si hay búsqueda? Normalmente select all aplica a lo visible
+                    if (cb.closest('label').style.display !== 'none') {
+                        cb.checked = checked;
+                        if (checked) selectedSubjects.add(cb.value);
+                        else selectedSubjects.delete(cb.value);
+                    }
+                });
+                updateCount();
+            }
+
+            // --- SISTEMA DE HORARIOS (LÓGICA EXISTENTE ADAPTADA) ---
+            let discardedOptionsHistory = [];
+            let subjectColorMap = new Map();
+            let lastDiscardedResult = null;
+            const colorPalette = [
+                { bg: 'dark:bg-blue-900/50 bg-blue-100', border: 'border-blue-500' }, { bg: 'dark:bg-green-900/50 bg-green-100', border: 'border-green-500' },
+                { bg: 'dark:bg-yellow-900/50 bg-yellow-100', border: 'border-yellow-500' }, { bg: 'dark:bg-red-900/50 bg-red-100', border: 'border-red-500' },
+                { bg: 'dark:bg-purple-900/50 bg-purple-100', border: 'border-purple-500' }, { bg: 'dark:bg-pink-900/50 bg-pink-100', border: 'border-pink-500' },
+                { bg: 'dark:bg-indigo-900/50 bg-indigo-100', border: 'border-indigo-500' }, { bg: 'dark:bg-teal-900/50 bg-teal-100', border: 'border-teal-500' },
+                { bg: 'dark:bg-orange-900/50 bg-orange-100', border: 'border-orange-500' },
+            ];
+            const ratingColors = { '5': 'bg-purple-500', '4': 'bg-green-500', '3': 'bg-orange-500', '2': 'bg-red-500', '1': 'bg-gray-400', '0': 'bg-black' };
+
+            // ... Listeners para filtros de horario, generar, etc ...
+            document.getElementById('apply-time-filter').addEventListener('click', applyTimeFilter);
+            document.getElementById('restore-options-btn').addEventListener('click', restoreLastOptions);
+            document.getElementById('restore-results-btn').addEventListener('click', restoreLastResult);
+            document.getElementById('results-controls').addEventListener('change', () => {
+                if (window.currentCombinations) displayResults(window.currentCombinations);
             });
-            tableHTML += '</tr>';
-        }
-        tableHTML += '</tbody></table></div>';
 
-        // Añadir leyenda de maestros
-        let legendHTML = '<div class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"><h4 class="font-bold mb-2">Leyenda de Maestros</h4><ul class="space-y-2">';
-        combination.forEach(course => {
-            const ratingColor = ratingColors[course.calificacion_maestro] || 'bg-gray-400';
-            legendHTML += `<li class="flex items-center text-sm"><span class="w-3 h-3 rounded-full mr-2 ${ratingColor}"></span><span>${course.profesor} (${course.materia})</span></li>`;
+            function renderSelectionPage(courseData) {
+                const subjectsContainer = document.getElementById('subjects-container');
+                const subjects = {};
+                courseData.forEach(course => {
+                    if (!subjects[course.materia]) subjects[course.materia] = [];
+                    subjects[course.materia].push(course);
+                });
+
+                subjectsContainer.innerHTML = '';
+                subjectColorMap.clear();
+                discardedOptionsHistory = [];
+                updateRestoreOptionsButton();
+                let colorIndex = 0;
+
+                Object.keys(subjects).sort().forEach(materia => {
+                    if (!subjectColorMap.has(materia)) {
+                        subjectColorMap.set(materia, colorPalette[colorIndex % colorPalette.length]);
+                        colorIndex++;
+                    }
+                    const color = subjectColorMap.get(materia);
+
+                    const subjectCard = document.createElement('div');
+                    subjectCard.className = 'subject-card bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg';
+                    subjectCard.innerHTML = `<div class="flex items-center mb-4"><span class="w-4 h-4 rounded-full ${color.bg} border ${color.border}"></span><h2 class="text-xl md:text-2xl font-bold text-blue-700 dark:text-blue-400 ml-3">${materia}</h2></div><div class="options-container overflow-x-auto"></div>`;
+
+                    const optionsContainer = subjectCard.querySelector('.options-container');
+                    const tableContainer = document.createElement('div');
+                    tableContainer.className = "w-full";
+
+                    const header = document.createElement('div');
+                    header.className = "hidden md:grid md:grid-cols-12 gap-4 bg-gray-100 dark:bg-gray-700 p-3 rounded-t-lg font-semibold text-sm text-gray-600 dark:text-gray-300";
+                    header.innerHTML = `<span class="col-span-4">Profesor</span><span class="col-span-1">NRC</span><span class="col-span-3">Horario</span><span class="col-span-2">Calificación</span><span class="col-span-2 text-center">Acciones</span>`;
+                    tableContainer.appendChild(header);
+
+                    const bodyContainer = document.createElement('div');
+                    bodyContainer.className = "space-y-4 md:space-y-0";
+
+                    subjects[materia].forEach(course => {
+                        const row = document.createElement('div');
+                        row.className = 'teacher-option grid grid-cols-2 md:grid-cols-12 gap-4 p-3 border-b dark:border-gray-700 items-center hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                        row.dataset.course = JSON.stringify(course);
+
+                        const horarioStr = course.horarios.map(h => `${h.dia.substring(0, 3)} ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)}`).join('<br>');
+
+                        row.innerHTML = `
+                        <div class="md:col-span-4 col-span-2 flex items-center">
+                            <span class="rating-indicator w-3 h-3 rounded-full mr-3 flex-shrink-0 bg-gray-400"></span>
+                            <div><span class="md:hidden font-bold">Profesor: </span>${course.profesor}</div>
+                        </div>
+                        <div class="md:col-span-1 col-span-1"><span class="md:hidden font-bold">NRC: </span>${course.nrc}</div>
+                        <div class="md:col-span-3 col-span-2 text-sm"><span class="md:hidden font-bold">Horario: </span><br class="md:hidden">${horarioStr}</div>
+                        <div class="md:col-span-2 col-span-1">
+                            <select class="calificacion-maestro p-2 border rounded w-full bg-white dark:bg-gray-700 dark:border-gray-600 text-sm">
+                                <option value="5">Excelente</option><option value="4">Bueno</option><option value="3">Regular</option><option value="2">Malo</option><option value="1" selected>Nulo</option><option value="0">Horrible</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2 col-span-2 flex justify-center items-center gap-2">
+                            <button class="remove-btn text-red-500 hover:text-red-700 font-bold text-lg p-2" title="Eliminar Opción">🗑️</button>
+                        </div>`;
+                        bodyContainer.appendChild(row);
+
+                        const ratingSelect = row.querySelector('.calificacion-maestro');
+                        const ratingIndicator = row.querySelector('.rating-indicator');
+
+                        const setIndicatorColor = (indicator, value) => {
+                            indicator.className = `rating-indicator w-3 h-3 rounded-full mr-3 flex-shrink-0 ${ratingColors[value] || 'bg-gray-400'}`;
+                        };
+
+                        ratingSelect.addEventListener('change', (e) => setIndicatorColor(ratingIndicator, e.target.value));
+                        setIndicatorColor(ratingIndicator, ratingSelect.value);
+
+                        row.querySelector('.remove-btn').addEventListener('click', () => {
+                            discardedOptionsHistory.push([row]);
+                            row.style.display = 'none';
+                            updateRestoreOptionsButton();
+                            updateConflictHighlighting();
+                        });
+                    });
+
+                    tableContainer.appendChild(bodyContainer);
+                    optionsContainer.appendChild(tableContainer);
+                    subjectsContainer.appendChild(subjectCard);
+                });
+            }
+
+            function formatTime12h(time24) {
+                if (!time24) return '';
+                const [hours, minutes] = time24.split(':');
+                const h = parseInt(hours, 10);
+                const suffix = h >= 12 ? 'PM' : 'AM';
+                const h12 = h % 12 || 12;
+                return `${h12}:${minutes} ${suffix}`;
+            }
+
+            // --- Algoritmo de Filtros y Generación (Reutilizado Simil) ---
+            function applyTimeFilter() {
+                const condition = document.getElementById('time-filter-condition').value;
+                const timeValue = document.getElementById('time-filter-value').value;
+                if (!timeValue) return alert('Selecciona una hora');
+                const timeInt = parseInt(timeValue.replace(':', ''));
+
+                let toRemove = [];
+
+                document.querySelectorAll('.teacher-option').forEach(row => {
+                    if (row.style.display === 'none') return;
+                    const course = JSON.parse(row.dataset.course);
+                    let remove = false;
+
+                    if (condition === 'ends_after') {
+                        if (course.horarios.some(h => parseInt(h.fin.replace(':', '')) > timeInt)) remove = true;
+                    } else if (condition === 'starts_before') {
+                        if (course.horarios.some(h => parseInt(h.inicio.replace(':', '')) < timeInt)) remove = true;
+                    } else if (condition === 'during') {
+                        if (course.horarios.some(h => {
+                            const s = parseInt(h.inicio.replace(':', ''));
+                            const e = parseInt(h.fin.replace(':', ''));
+                            return timeInt >= s && timeInt < e;
+                        })) remove = true;
+                    }
+
+                    if (remove) toRemove.push(row);
+                });
+
+                if (toRemove.length > 0) {
+                    if (confirm(`Se eliminarán ${toRemove.length} opciones. ¿Continuar?`)) {
+                        discardedOptionsHistory.push(toRemove);
+                        toRemove.forEach(r => r.style.display = 'none');
+                        updateRestoreOptionsButton();
+                        updateConflictHighlighting();
+                    }
+                }
+            }
+
+            function updateRestoreOptionsButton() {
+                const btn = document.getElementById('restore-options-btn');
+                btn.classList.toggle('hidden', discardedOptionsHistory.length === 0);
+            }
+
+            function restoreLastOptions() {
+                if (discardedOptionsHistory.length === 0) return;
+                const last = discardedOptionsHistory.pop();
+                last.forEach(row => row.style.display = 'grid'); // restaurar display grid original de clases css
+                updateRestoreOptionsButton();
+                updateConflictHighlighting();
+            }
+
+            function updateConflictHighlighting() {
+                document.querySelectorAll('.teacher-option').forEach(r => r.classList.remove('conflict-highlight'));
+            }
+
+            function updateRestoreResultsButton() {
+                const btn = document.getElementById('restore-results-btn');
+                if (btn) btn.classList.toggle('hidden', discardedResultsHistory.length === 0);
+            }
+
+            function restoreLastResult() {
+                if (discardedResultsHistory.length === 0) return;
+                const last = discardedResultsHistory.pop();
+                // Add back to current combinations and re-render
+                if (window.currentCombinations) {
+                    window.currentCombinations.push(last);
+                    displayResults(window.currentCombinations);
+                }
+                updateRestoreResultsButton();
+            }
+
+            // --- Generación ---
+            function handleGenerateCombinations() {
+                const coursesBySubject = {};
+                document.querySelectorAll('.subject-card').forEach(card => {
+                    const materia = card.querySelector('h2').textContent;
+                    const options = [];
+                    card.querySelectorAll('.teacher-option').forEach(row => {
+                        if (row.style.display !== 'none') {
+                            const c = JSON.parse(row.dataset.course);
+                            c.calificacion_maestro = parseInt(row.querySelector('.calificacion-maestro').value);
+                            options.push(c);
+                        }
+                    });
+                    if (options.length > 0) coursesBySubject[materia] = options;
+                });
+
+                const courseList = Object.values(coursesBySubject);
+                if (courseList.length === 0) return alert("No hay materias válidas.");
+
+                resultsPage.querySelector('#results-container').innerHTML = `<div class="text-center p-10"><div class="loader inline-block w-12 h-12 border-4 border-blue-500 rounded-full border-t-transparent"></div></div>`;
+                navigateTo(selectionPage, resultsPage);
+
+                setTimeout(() => {
+                    const combinations = [];
+                    findCombinations(courseList, 0, [], combinations);
+                    window.currentCombinations = combinations;
+                    displayResults(combinations);
+                }, 100);
+            }
+
+            function findCombinations(subjects, index, current, result) {
+                if (index === subjects.length) {
+                    result.push([...current]);
+                    return;
+                }
+                subjects[index].forEach(course => {
+                    if (!hasConflict(current, course)) {
+                        current.push(course);
+                        findCombinations(subjects, index + 1, current, result);
+                        current.pop();
+                    }
+                });
+            }
+
+            function hasConflict(combination, newCourse) {
+                for (const existing of combination) {
+                    for (const t1 of existing.horarios) {
+                        for (const t2 of newCourse.horarios) {
+                            if (t1.dia === t2.dia) {
+                                const s1 = parseInt(t1.inicio.replace(':', ''));
+                                const e1 = parseInt(t1.fin.replace(':', ''));
+                                const s2 = parseInt(t2.inicio.replace(':', ''));
+                                const e2 = parseInt(t2.fin.replace(':', ''));
+                                if (Math.max(s1, s2) < Math.min(e1, e2)) return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            function calculateCompactnessScore(combination) {
+                let totalGap = 0;
+                const days = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+                days.forEach(day => {
+                    const classes = combination.flatMap(c => c.horarios.filter(h => h.dia === day));
+                    if (classes.length < 2) return;
+                    const times = classes.map(h => ({ s: parseInt(h.inicio.replace(':', '')), e: parseInt(h.fin.replace(':', '')) })).sort((a, b) => a.s - b.s);
+                    for (let i = 0; i < times.length - 1; i++) {
+                        const gap = times[i + 1].s - times[i].e;
+                        if (gap > 0) totalGap += gap;
+                    }
+                });
+                return totalGap / 100;
+            }
+
+            function displayResults(combinations) {
+                const container = document.getElementById('results-container');
+                if (combinations.length === 0) {
+                    container.innerHTML = `<div class="text-center text-xl text-gray-500 mt-10">😢 No se encontraron horarios sin conflictos. Intenta ser menos estricto con los filtros.</div>`;
+                    return;
+                }
+
+                const sortOrder = document.querySelector('input[name="sort-order"]:checked').value;
+
+                const rated = combinations.map(combo => {
+                    const avgRating = combo.reduce((a, c) => a + c.calificacion_maestro, 0) / combo.length;
+                    const compactness = calculateCompactnessScore(combo);
+                    // Combined score: Higher rating is better, Lower compactness (gap) is better
+                    const score = (avgRating * 10) - compactness;
+
+                    let qClass = 'malo';
+                    if (avgRating >= 4.5) qClass = 'excelente';
+                    else if (avgRating >= 3.5) qClass = 'bueno';
+                    else if (avgRating >= 2.5) qClass = 'regular';
+
+                    return { combo, avgRating, compactness, score, qClass };
+                });
+
+                if (sortOrder === 'rating') rated.sort((a, b) => b.avgRating - a.avgRating);
+                else if (sortOrder === 'compactness') rated.sort((a, b) => a.compactness - b.compactness);
+                else rated.sort((a, b) => b.score - a.score);
+
+                container.innerHTML = `<p class="text-center mb-4 text-gray-500">Se encontraron ${rated.length} combinaciones</p>`;
+
+                rated.slice(0, 50).forEach((item, idx) => { // Limit render
+                    const div = document.createElement('div');
+                    div.className = `schedule-card border-l-8 p-4 rounded-lg bg-white dark:bg-gray-800 shadow-md ${item.qClass}`;
+                    div.innerHTML = `
+                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                         <h3 class="font-bold text-lg dark:text-blue-300">Opción #${idx + 1} <span class="text-sm font-normal text-gray-500">Promedio: ${item.avgRating.toFixed(2)}</span></h3>
+                         <div class="flex gap-2 flex-wrap">
+                             <button class="view-btn px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm transition-colors">Ver Horario Visual</button>
+                             <button class="download-hd-btn hidden px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors">📥 Descargar HD</button>
+                             <button class="download-text-btn hidden px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors">📋 Copiar Texto</button>
+                         </div>
+                     </div>
+                     <div class="visual-schedule mt-4 hidden"></div>
+                     <div class="teacher-info mt-4 hidden bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                         <h4 class="font-bold text-md mb-3 text-gray-800 dark:text-gray-200">📊 Información de Maestros</h4>
+                         <div class="teacher-list space-y-2"></div>
+                     </div>
+                 `;
+
+                    const btn = div.querySelector('.view-btn');
+                    const downloadHdBtn = div.querySelector('.download-hd-btn');
+                    const downloadTextBtn = div.querySelector('.download-text-btn');
+                    const visualSchedule = div.querySelector('.visual-schedule');
+                    const teacherInfo = div.querySelector('.teacher-info');
+
+                    btn.addEventListener('click', () => {
+                        if (visualSchedule.classList.contains('hidden')) {
+                            visualSchedule.innerHTML = generateTableHTML(item.combo);
+                            visualSchedule.classList.remove('hidden');
+                            teacherInfo.classList.remove('hidden');
+                            downloadHdBtn.classList.remove('hidden');
+                            downloadTextBtn.classList.remove('hidden');
+                            generateTeacherInfo(item.combo, div.querySelector('.teacher-list'));
+                            btn.textContent = 'Ocultar';
+                        } else {
+                            visualSchedule.classList.add('hidden');
+                            teacherInfo.classList.add('hidden');
+                            downloadHdBtn.classList.add('hidden');
+                            downloadTextBtn.classList.add('hidden');
+                            btn.textContent = 'Ver Horario Visual';
+                        }
+                    });
+
+                    downloadHdBtn.addEventListener('click', () => {
+                        downloadScheduleAsImage(visualSchedule, `horario_opcion_${idx + 1}.png`);
+                    });
+
+                    downloadTextBtn.addEventListener('click', () => {
+                        downloadScheduleAsText(item.combo, `horario_opcion_${idx + 1}.txt`);
+                    });
+
+                    container.appendChild(div);
+                });
+            }
+
+            function generateTableHTML(combination) {
+                // Calculate dynamic hour range based on actual class times
+                let minHour = 23, maxHour = 0;
+                combination.forEach(course => {
+                    course.horarios.forEach(h => {
+                        const startHour = Math.floor(parseInt(h.inicio.replace(':', '')) / 100);
+                        const endHour = Math.ceil(parseInt(h.fin.replace(':', '')) / 100);
+                        minHour = Math.min(minHour, startHour);
+                        maxHour = Math.max(maxHour, endHour);
+                    });
+                });
+
+                // Add buffer (1 hour before and after)
+                minHour = Math.max(7, minHour - 1);
+                maxHour = Math.min(21, maxHour + 1);
+
+
+                const hours = Array.from({ length: maxHour - minHour }, (_, i) => i + minHour);
+                let html = `<div class="overflow-x-auto"><table class="w-full text-xs md:text-sm border-collapse" style="table-layout: fixed;"><thead><tr><th class="p-2 border dark:border-gray-700 bg-gray-100 dark:bg-gray-900" style="width: 60px;">Hora</th>`;
+                ['Lun', 'Mar', 'Mie', 'Jue', 'Vie'].forEach(d => html += `<th class="p-2 border dark:border-gray-700 bg-gray-100 dark:bg-gray-900" style="width: calc((100% - 60px) / 5);">${d}</th>`);
+                html += `</tr></thead><tbody>`;
+
+                hours.forEach(h => {
+                    html += `<tr><td class="p-2 border dark:border-gray-700 text-center font-bold text-gray-400" style="width: 60px;">${h}:00</td>`;
+                    ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'].forEach(d => {
+                        let cell = '';
+                        const matches = combination.flatMap(c => c.horarios.filter(sch => sch.dia === d && parseInt(sch.inicio.replace(':', '')) <= h * 100 && parseInt(sch.fin.replace(':', '')) > h * 100).map(sch => ({ ...c, salon: sch.salon })));
+
+                        if (matches.length > 0) {
+                            matches.forEach(m => {
+                                const color = subjectColorMap.get(m.materia) || { bg: 'bg-gray-200' };
+                                cell += `<div class="${color.bg} p-1 mb-1 rounded border-l-2 ${color.border}">
+                                 <div class="font-bold text-xs leading-tight break-words">${m.materia}</div>
+                                 <div class="text-[10px] leading-tight break-words">${m.profesor}</div>
+                                 <div class="text-[10px] text-gray-500">${m.salon || ''}</div>
+                             </div>`;
+                            });
+                        }
+                        html += `<td class="p-1 border dark:border-gray-700 align-top h-16">${cell}</td>`;
+                    });
+                    html += `</tr>`;
+                });
+                html += `</tbody></table></div>`;
+                return html;
+            }
+
+            function generateTeacherInfo(combination, container) {
+                container.innerHTML = '';
+
+                // Create table
+                const table = document.createElement('table');
+                table.className = 'w-full text-sm border-collapse';
+
+                // Header
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr class="bg-gray-200 dark:bg-gray-600">
+                        <th class="p-2 border dark:border-gray-600 text-left">Materia</th>
+                        <th class="p-2 border dark:border-gray-600 text-left">Maestro</th>
+                        <th class="p-2 border dark:border-gray-600 text-center">NRC</th>
+                        <th class="p-2 border dark:border-gray-600 text-center">Calidad</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+
+                // Body
+                const tbody = document.createElement('tbody');
+                combination.forEach(course => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-100 dark:hover:bg-gray-600/30';
+
+                    // Quality label mapping
+                    const qualityLabels = {
+                        5: 'Excelente',
+                        4: 'Bueno',
+                        3: 'Regular',
+                        2: 'Malo',
+                        1: 'Nulo',
+                        0: 'Horrible'
+                    };
+
+                    // Quality color mapping
+                    const qualityColors = {
+                        5: 'bg-purple-500',
+                        4: 'bg-green-500',
+                        3: 'bg-orange-500',
+                        2: 'bg-red-500',
+                        1: 'bg-gray-400',
+                        0: 'bg-black'
+                    };
+
+                    const qualityLabel = qualityLabels[course.calificacion_maestro] || 'N/A';
+                    const qualityColor = qualityColors[course.calificacion_maestro] || 'bg-gray-400';
+
+                    tr.innerHTML = `
+                        <td class="p-2 border dark:border-gray-600">${course.materia}</td>
+                        <td class="p-2 border dark:border-gray-600">${course.profesor}</td>
+                        <td class="p-2 border dark:border-gray-600 text-center font-mono">${course.nrc}</td>
+                        <td class="p-2 border dark:border-gray-600 text-center">
+                            <span class="${qualityColor} text-white px-2 py-1 rounded text-xs font-semibold">
+                                ${qualityLabel}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+
+                container.appendChild(table);
+            }
+
+
+            function downloadScheduleAsImage(scheduleElement, filename) {
+                // Get parent card to capture both schedule and teacher info
+                const card = scheduleElement.closest('.schedule-card');
+
+                // Create a temporary container with both schedule and teacher info
+                const tempContainer = document.createElement('div');
+                tempContainer.style.padding = '20px';
+                tempContainer.style.backgroundColor = document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff';
+                tempContainer.style.position = 'absolute';
+                tempContainer.style.left = '-9999px';
+                tempContainer.style.top = '0';
+                tempContainer.style.width = '1200px'; // Fixed width for consistent export
+                tempContainer.style.maxWidth = '1200px';
+
+                // Clone schedule and teacher info
+                const scheduleClone = scheduleElement.cloneNode(true);
+                const teacherInfo = card.querySelector('.teacher-info');
+                const teacherClone = teacherInfo ? teacherInfo.cloneNode(true) : null;
+
+                scheduleClone.classList.remove('hidden');
+                if (teacherClone) teacherClone.classList.remove('hidden');
+
+                tempContainer.appendChild(scheduleClone);
+                if (teacherClone) tempContainer.appendChild(teacherClone);
+
+                document.body.appendChild(tempContainer);
+
+                // Use html2canvas to capture
+                html2canvas(tempContainer, {
+                    backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                    scale: 2, // Reduced scale for better file size but still good quality
+                    logging: false,
+                    useCORS: true,
+                    width: 1200,
+                    windowWidth: 1200
+                }).then(canvas => {
+                    // Remove temp container
+                    document.body.removeChild(tempContainer);
+
+                    // Convert canvas to blob and download
+                    canvas.toBlob(blob => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 'image/png');
+                }).catch(err => {
+                    console.error('Error generating image:', err);
+                    alert('Error al generar la imagen. Por favor intenta de nuevo.');
+                    if (document.body.contains(tempContainer)) {
+                        document.body.removeChild(tempContainer);
+                    }
+                });
+            }
+
+
+            function downloadScheduleAsText(combination, filename) {
+                let text = '═══════════════════════════════════════════════\n';
+                text += '           HORARIO - FORMATO TEXTO\n';
+                text += '═══════════════════════════════════════════════\n\n';
+
+                combination.forEach((course, idx) => {
+                    text += `${idx + 1}. ${course.materia}\n`;
+                    text += `   Maestro: ${course.profesor}\n`;
+                    text += `   NRC: ${course.nrc}\n`;
+                    text += `   Horarios:\n`;
+
+                    // Group by day
+                    const byDay = {};
+                    course.horarios.forEach(h => {
+                        if (!byDay[h.dia]) byDay[h.dia] = [];
+                        byDay[h.dia].push(h);
+                    });
+
+                    Object.entries(byDay).forEach(([day, schedules]) => {
+                        schedules.forEach(sch => {
+                            text += `      - ${day}: ${formatTime12h(sch.inicio)} - ${formatTime12h(sch.fin)}`;
+                            if (sch.salon) text += ` (${sch.salon})`;
+                            text += '\n';
+                        });
+                    });
+
+
+                    text += '\n';
+                });
+
+                text += '═══════════════════════════════════════════════\n';
+                text += `Generado: ${new Date().toLocaleString('es-MX')}\n`;
+
+                // Copy to clipboard instead of downloading
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('✅ Horario copiado al portapapeles! Ahora puedes pegarlo donde quieras.');
+                }).catch(err => {
+                    console.error('Error copying to clipboard:', err);
+                    // Fallback: show text in a prompt for manual copy
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        alert('✅ Horario copiado al portapapeles!');
+                    } catch (e) {
+                        alert('❌ No se pudo copiar automáticamente. Por favor copia manualmente:\n\n' + text);
+                    }
+                    document.body.removeChild(textarea);
+                });
+            }
+
         });
-        legendHTML += '</ul></div>';
-
-        return tableHTML + legendHTML;
-    }
-});
-</script>
-
+    </script>
 </body>
+
 </html>
