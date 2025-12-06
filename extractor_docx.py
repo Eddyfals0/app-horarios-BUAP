@@ -129,5 +129,5 @@ def docx_to_csv(input_path):
         print(f"Error writing CSV: {e}")
 
 if __name__ == "__main__":
-    path = r"C:\Users\Eduar\Documents\GitHub\app-horarios-BUAP\Pruba de extración de información\PA_ICC_CU_21_NOV_2025.docx"
+    path = r"C:\Users\Eduar\Documents\GitHub\app-horarios-BUAP\Pruba de extración de información\PA_ITI_CU2_21_NOV_2025.docx"
     docx_to_csv(path)
