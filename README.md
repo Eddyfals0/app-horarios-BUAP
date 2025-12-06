@@ -4,75 +4,62 @@ Una aplicación web moderna y fácil de usar para optimizar horarios universitar
 
 ## ✨ Características Principales
 
-- **🎯 Análisis Automático**: Pega directamente los datos de los cursos desde Word o PDF
-- **⚡ Generación Inteligente**: Encuentra todas las combinaciones de horarios sin conflictos
-- **⭐ Sistema de Calificaciones**: Califica a tus profesores (Excelente, Bueno, Regular, Malo, Nulo)
-- **🎨 Interfaz Moderna**: Diseño responsive con modo oscuro incluido
-- **📊 Visualización Avanzada**: Tablas de horarios con colores por materia
-- **🔍 Filtros Inteligentes**: Filtra por horarios específicos
-- **📋 Exportación**: Copia horarios completos al portapapeles
-- **💾 Persistencia**: Los datos se guardan automáticamente
+- **📂 Carga Automática**: Acceso inmediato a un catálogo pre-cargado de carreras y especialidades.
+- **⚡ Generación Inteligente**: Encuentra todas las combinaciones de horarios sin conflictos.
+- **⭐ Sistema de Calificaciones**: Califica a tus profesores (Excelente, Bueno, Regular, Malo, Nulo).
+- **📸 Exportación HD**: Descarga tu horario como una imagen de alta resolución que integra el calendario visual y la tabla de información de profesores.
+- **📋 Copiado Rápido**: Exporta los detalles textuales (NRC, Materia, Maestro) directamente al portapapeles para compartir fácil.
+- **📐 Tablas Dinámicas**: Las tablas visuales se ajustan inteligentemente al rango de horas real de tus clases (sin espacios vacíos innecesarios).
+- **🎨 Interfaz Moderna**: Diseño responsive con modo oscuro incluido.
+- **💾 Persistencia**: Tus preferencias y selecciones se recuerdan automáticamente.
 
 ## 🚀 Cómo Usar
 
-### 1. Preparar los Datos
-1. Convierte tu PDF de horarios a un archivo de Word
-2. Copia únicamente las líneas de las materias que te interesan
-3. Asegúrate de que cada línea tenga el formato correcto
+### 1. Iniciar la Aplicación
+1. Abre el archivo `index.html` en cualquier navegador moderno.
+2. La aplicación cargará automáticamente el catálogo disponible desde `carreras.js`.
 
-### 2. Formato Requerido
-Cada línea debe seguir este formato:
+### 2. Seleccionar Materias
+1. Selecciona tu **Carrera** de la lista.
+2. Elige la **Especialidad o Periodo** correspondiente (archivo CSV).
+3. Marca las casillas de las **materias** que deseas cursar este semestre.
+
+### 3. Configurar Preferencias
+1. **Califica a los profesores** según tu experiencia o recomendaciones.
+2. (Opcional) Usa los filtros rápidos para eliminar clases muy temprano o muy tarde.
+3. Haz clic en **"Generar Combinaciones"**.
+
+### 4. Elegir y Exportar
+1. Explora las opciones generadas, ordenadas por calificación o compacidad.
+2. Haz clic en **"Ver Horario Visual"** para ver el detalle de la semana.
+3. Usa las herramientas de exportación:
+   - **📥 Descargar HD**: Crea una imagen PNG completa del horario y los profesores.
+   - **📋 Copiar Texto**: Copia el resumen del horario al portapapeles.
+
+## 🛠️ Gestión del Catálogo (Para Administradores)
+
+Si necesitas actualizar los horarios disponibles en la aplicación:
+
+### 1. Extracción de Datos
+Usa el script `extractor_docx.py` para convertir los documentos de Word oficiales (Horarios) a formato CSV limpio.
+*(Requiere configurar la ruta del archivo en el script)*.
+
+### 2. Estructura de Directorios
+Organiza los archivos CSV generados en una carpeta llamada `Carreras`, siguiendo esta estructura:
 ```
-NRC CLAVE MATERIA SECCION DIA HORARIO PROFESOR SALON
+/Carreras
+  /Ingeniería en Ciencias de la Computación
+    primavera_2024.csv
+  /Ingeniería Mecatrónica
+    otoño_2024.csv
 ```
 
-**Ejemplo:**
+### 3. Generar `carreras.js`
+Ejecuta el script de Python para consolidar todos los CSV en un único archivo que la web pueda leer:
+```bash
+python generate_catalog.py
 ```
-25665 CCOS 250 Circuitos Logicos OO1 L 1000-1059 TRINIDAD - GARCIA GREGORIO 1CCO4/101
-98765 FIS 101 Física Cuántica Aplicada OO1 L 0800-0900 EINSTEIN - ALBERT LAB01
-20016 FGUS 007 Lengua Extranjera IV 101 M 0900-1059 CHAVEZ - HEREDIA CLAUDIA 1CCO1/002
-```
-
-**Donde:**
-- `NRC`: Código del curso (5 dígitos)
-- `CLAVE`: Clave de la materia (ej: CCOS 250)
-- `MATERIA`: Nombre completo de la materia
-- `SECCION`: Sección del curso (ej: OO1, 101)
-- `DIA`: Día de la semana (L=Lunes, M=Miércoles, A=Martes, J=Jueves, V=Viernes)
-- `HORARIO`: Horario en formato 24h (ej: 1000-1059)
-- `PROFESOR`: Nombre completo del profesor
-- `SALON`: Salón o laboratorio
-
-### 3. Proceso de Optimización
-
-#### Paso 1: Ingresar Datos
-- Pega el texto en el área correspondiente
-- Haz clic en "Analizar y Configurar Materias"
-
-#### Paso 2: Configurar Materias
-- **Califica a los profesores** usando el sistema de estrellas
-- **Elimina opciones** que no te interesen
-- **Usa filtros rápidos** para descartar horarios específicos
-- Haz clic en "Generar Combinaciones"
-
-#### Paso 3: Explorar Resultados
-- **Ordena por**: Mejor combinación, calificación de maestros, o horario más compacto
-- **Visualiza horarios** en formato de tabla semanal
-- **Exporta horarios** completos al portapapeles
-- **Descarta combinaciones** que no te gusten
-
-## 🎨 Características de la Interfaz
-
-### Modo Oscuro
-La aplicación incluye un modo oscuro automático que se adapta a las preferencias de tu sistema.
-
-### Diseño Responsive
-- **Desktop**: Vista completa con tablas detalladas
-- **Tablet**: Diseño adaptado para pantallas medianas
-- **Móvil**: Interfaz optimizada para dispositivos móviles
-
-### Colores por Materia
-Cada materia tiene un color único para facilitar la identificación en las tablas de horarios.
+Esto generará un nuevo archivo `carreras.js`. Simplemente recarga `index.html` para ver los cambios.
 
 ## 📊 Sistema de Calificaciones
 
@@ -84,48 +71,11 @@ Cada materia tiene un color único para facilitar la identificación en las tabl
 | ⭐⭐ | Malo | Rojo |
 | ⭐ | Nulo | Gris |
 
-## 🔧 Filtros Disponibles
-
-### Filtro por Horario
-- **Clases que terminen después de las X**: Elimina clases que terminan tarde
-- **Clases que empiecen antes de las X**: Elimina clases muy tempranas
-- **Clases durante la hora X**: Elimina clases en horarios específicos
-
-### Ordenamiento de Resultados
-- **Mejor Combinación**: Balance entre calificación de maestros y compactitud
-- **Calificación de Maestros**: Prioriza profesores mejor calificados
-- **Horario más Compacto**: Minimiza las horas libres entre clases
-
-## 💾 Almacenamiento
-
-Los datos se guardan automáticamente en el navegador usando localStorage, por lo que:
-- No se pierden al cerrar la pestaña
-- Se mantienen entre sesiones
-- Son privados (solo en tu navegador)
-
 ## 🌐 Compatibilidad
 
 - **Navegadores**: Chrome, Firefox, Safari, Edge (versiones modernas)
 - **Dispositivos**: Desktop, tablet, móvil
 - **Sistemas**: Windows, macOS, Linux, Android, iOS
-
-## 🚀 Instalación
-
-No requiere instalación. Simplemente:
-
-1. Descarga el archivo `index.html`
-2. Ábrelo en cualquier navegador web moderno
-3. ¡Listo para usar!
-
-## 📝 Ejemplo de Uso Completo
-
-1. **Copia datos** de tu PDF de horarios
-2. **Pega en la aplicación** y analiza
-3. **Califica profesores** según tu experiencia
-4. **Elimina opciones** no deseadas
-5. **Genera combinaciones**
-6. **Explora resultados** y elige el mejor horario
-7. **Exporta** tu horario final
 
 ## 🤝 Contribuciones
 
@@ -134,13 +84,6 @@ No requiere instalación. Simplemente:
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
-
-## 🆘 Soporte
-
-Si tienes problemas o preguntas:
-1. Verifica que el formato del texto sea correcto
-2. Asegúrate de usar un navegador moderno
-3. Revisa que los datos no tengan caracteres especiales extraños
 
 ---
 
