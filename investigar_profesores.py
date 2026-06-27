@@ -23,10 +23,25 @@ def load_cached_ratings():
         try:
             with open(JS_CACHE_PATH, "r", encoding="utf-8") as f:
                 content = f.read()
-            # Match pattern: "Name": score
-            matches = re.findall(r'"([^"]+)":\s*([0-9.]+)', content)
-            for name, score in matches:
-                ratings[name.strip()] = float(score)
+            
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith('"') and ":" in line:
+                    parts = line.split(":", 1)
+                    key = parts[0].strip().strip('"')
+                    val_str = parts[1].strip().rstrip(",").rstrip("};")
+                    
+                    if val_str.startswith("{") and val_str.endswith("}"):
+                        score_match = re.search(r'score:\s*([0-9.]+)', val_str)
+                        url_match = re.search(r'url:\s*"([^"]+)"', val_str)
+                        score = float(score_match.group(1)) if score_match else None
+                        url = url_match.group(1) if url_match else None
+                        ratings[key] = {"score": score, "url": url}
+                    else:
+                        try:
+                            ratings[key] = {"score": float(val_str), "url": None}
+                        except ValueError:
+                            pass
             print(f"Loaded {len(ratings)} teachers from local cache.")
         except Exception as e:
             print(f"Error reading cache: {e}")
@@ -39,7 +54,13 @@ def save_ratings(ratings):
         sorted_keys = sorted(list(ratings.keys()))
         for i, key in enumerate(sorted_keys):
             comma = "," if i < len(sorted_keys) - 1 else ""
-            lines.append(f'    "{key}": {ratings[key]}{comma}')
+            val = ratings[key]
+            if isinstance(val, dict):
+                score_str = f"score: {val['score']}" if val['score'] is not None else "score: null"
+                url_str = f'url: "{val["url"]}"' if val['url'] is not None else "url: null"
+                lines.append(f'    "{key}": {{ {score_str}, {url_str} }}{comma}')
+            else:
+                lines.append(f'    "{key}": {{ score: {val}, url: null }}{comma}')
         lines.append("};")
         
         with open(JS_CACHE_PATH, "w", encoding="utf-8") as f:
@@ -169,7 +190,7 @@ def main():
             # Scrape rating
             rating = scrape_teacher_rating(profile_url)
             if rating is not None:
-                ratings[teacher] = rating
+                ratings[teacher] = {"score": rating, "url": profile_url}
                 new_ratings_found += 1
                 print(f"  Rating extracted: {rating} / 10.0")
                 

@@ -310,10 +310,10 @@
                             Manual
                         </button>
                         <div class="group relative">
-                            <button type="button" class="w-4.5 h-4.5 flex items-center justify-center rounded-full bg-zinc-850 hover:bg-zinc-755 border border-zinc-750 text-zinc-450 text-[10px] font-bold focus:outline-none cursor-help">?</button>
+                            <button type="button" class="w-5 h-5 flex items-center justify-center rounded-full bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 text-[11px] font-semibold transition-all focus:outline-none cursor-help">?</button>
                             <div class="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-950 text-zinc-300 text-[11px] rounded shadow-xl border border-zinc-800 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50 leading-relaxed">
                                 <span class="font-bold text-zinc-100 block mb-0.5">Calificación Manual</span>
-                                Te permite calificar tú mismo a cada profesor según tu propia experiencia o investigación. Pulsa en los pills (H, M, N, R, B, E) de la fila.
+                                Te permite calificar tú mismo a cada profesor según tu propia experiencia o investigación. Pulsa en las píldoras de colores (H, M, N, R, B, E) de la fila.
                             </div>
                         </div>
                     </div>
@@ -324,10 +324,12 @@
                             Base de Datos IA
                         </button>
                         <div class="group relative">
-                            <button type="button" class="w-4.5 h-4.5 flex items-center justify-center rounded-full bg-zinc-850 hover:bg-zinc-755 border border-zinc-750 text-zinc-450 text-[10px] font-bold focus:outline-none cursor-help">?</button>
+                            <button type="button" class="w-5 h-5 flex items-center justify-center rounded-full bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 text-[11px] font-semibold transition-all focus:outline-none cursor-help">?</button>
                             <div class="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-950 text-zinc-300 text-[11px] rounded shadow-xl border border-zinc-800 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50 leading-relaxed">
-                                <span class="font-bold text-zinc-100 block mb-0.5">Base de Datos IA</span>
-                                Carga automáticamente las calificaciones compiladas de múltiples plataformas públicas de internet (como <i>MisProfesores.com</i>). En caso de no existir datos del profesor, se asignará "Nulo (N)" por defecto.
+                                <span class="font-bold text-zinc-100 block mb-1">Base de Datos IA</span>
+                                Carga automáticamente las calificaciones compiladas de la plataforma <span class="text-zinc-100 font-semibold">MisProfesores.com</span>.<br><br>
+                                👉 <span class="text-zinc-200">¡Clic para verificar!</span> Pulsa el badge numérico de calificación al lado del nombre de cualquier profesor para abrir su perfil original en una pestaña nueva y leer los comentarios detallados.<br><br>
+                                👉 <span class="text-zinc-200">Totalmente editable:</span> Si consideras que una calificación de la base de datos es incorrecta, puedes corregirla libremente pulsando los botones (H, M, N, R, B, E) en su fila.
                             </div>
                         </div>
                     </div>
@@ -502,6 +504,7 @@
             let discardedOptionsHistory = [];
             let ratingMode = 'manual'; // 'manual' | 'ia'
             const userManualRatings = {}; // Map: "Materia-Profesor-NRC" -> rating_val
+            const iaUserCorrections = {}; // Map: "Materia-Profesor-NRC" -> rating_val (overrides on IA scores)
 
             // --- EVENT LISTENERS ---
             folderInput.addEventListener('change', handleFolderSelect);
@@ -552,8 +555,8 @@
                 const num = parseFloat(score);
                 if (isNaN(num)) return "1";
                 if (num < 5.0) return "0"; // Horrible
-                if (num >= 5.0 && num < 6.5) return "2"; // Malo
-                if (num >= 6.5 && num < 8.0) return "3"; // Regular
+                if (num >= 5.0 && num < 6.0) return "2"; // Malo
+                if (num >= 6.0 && num < 8.0) return "3"; // Regular
                 if (num >= 8.0 && num < 9.0) return "4"; // Bueno
                 return "5"; // Excelente
             }
@@ -611,7 +614,6 @@
                     
                     document.querySelectorAll('.teacher-option').forEach(row => {
                         const ratingGroup = row.querySelector('.rating-btn-group');
-                        ratingGroup.classList.remove('pointer-events-none', 'opacity-60');
                         
                         const course = JSON.parse(row.dataset.course);
                         const key = `${course.materia}-${course.profesor}-${course.nrc}`;
@@ -626,12 +628,19 @@
                     
                     document.querySelectorAll('.teacher-option').forEach(row => {
                         const ratingGroup = row.querySelector('.rating-btn-group');
-                        ratingGroup.classList.add('pointer-events-none', 'opacity-60');
                         
                         const course = JSON.parse(row.dataset.course);
-                        const teacherName = course.profesor.trim();
-                        const iaScore = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherName] : null;
-                        const val = mapIaScoreToRatingVal(iaScore);
+                        const key = `${course.materia}-${course.profesor}-${course.nrc}`;
+                        
+                        let val;
+                        if (iaUserCorrections[key] !== undefined) {
+                            val = iaUserCorrections[key];
+                        } else {
+                            const teacherName = course.profesor.trim();
+                            const iaData = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherName] : null;
+                            const iaScore = (iaData && typeof iaData === 'object') ? iaData.score : (typeof iaData === 'number' ? iaData : null);
+                            val = mapIaScoreToRatingVal(iaScore);
+                        }
                         
                         ratingGroup.dataset.value = val;
                         updateRowRatingUI(row, val);
@@ -936,10 +945,19 @@
                         const horarioStr = course.horarios.map(h => `${h.dia.substring(0, 3)} ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)}`).join(', ');
 
                         const teacherNameForIa = course.profesor.trim();
-                        const iaScoreVal = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherNameForIa] : null;
+                        const iaData = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherNameForIa] : null;
+                        const iaScoreVal = (iaData && typeof iaData === 'object') ? iaData.score : (typeof iaData === 'number' ? iaData : null);
+                        const iaUrlVal = (iaData && typeof iaData === 'object') ? iaData.url : null;
+                        
                         let iaBadge = '';
                         if (iaScoreVal !== undefined && iaScoreVal !== null) {
-                            iaBadge = `<span class="ml-2 text-[9px] bg-zinc-900 border border-zinc-800/80 text-zinc-400 px-1.5 py-0.2 rounded font-mono font-bold flex-shrink-0" title="Calificación de la base de datos IA">${iaScoreVal.toFixed(1)}</span>`;
+                            const targetUrl = iaUrlVal || `https://www.misprofesores.com/Buscar?q=BUAP+${encodeURIComponent(teacherNameForIa)}`;
+                            iaBadge = `<a href="${targetUrl}" target="_blank" class="ml-2 text-[9px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800/80 hover:border-zinc-700/80 text-zinc-450 hover:text-zinc-200 px-1.5 py-0.5 rounded font-mono font-bold flex items-center gap-1.5 transition-all flex-shrink-0 cursor-pointer" title="Ver comentarios en MisProfesores.com (Clic para abrir)">
+                                <span>${iaScoreVal.toFixed(1)}</span>
+                                <svg class="h-2 w-2 text-zinc-550" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </a>`;
                         }
 
                         row.innerHTML = `
@@ -978,13 +996,16 @@
                         const key = `${course.materia}-${course.profesor}-${course.nrc}`;
                         
                         if (ratingMode === 'ia') {
-                            const teacherName = course.profesor.trim();
-                            const iaScore = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherName] : null;
-                            initialVal = mapIaScoreToRatingVal(iaScore);
-                            ratingGroup.classList.add('pointer-events-none', 'opacity-60');
+                            if (iaUserCorrections[key] !== undefined) {
+                                initialVal = iaUserCorrections[key];
+                            } else {
+                                const teacherName = course.profesor.trim();
+                                const iaData = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherName] : null;
+                                const iaScore = (iaData && typeof iaData === 'object') ? iaData.score : (typeof iaData === 'number' ? iaData : null);
+                                initialVal = mapIaScoreToRatingVal(iaScore);
+                            }
                         } else {
                             initialVal = userManualRatings[key] || "1";
-                            ratingGroup.classList.remove('pointer-events-none', 'opacity-60');
                         }
                         ratingGroup.dataset.value = initialVal;
                         
@@ -993,13 +1014,15 @@
 
                         ratingPills.forEach(pill => {
                             pill.addEventListener('click', () => {
-                                if (ratingMode === 'ia') return; // Prevenir clicks en modo IA
                                 const val = pill.dataset.val;
                                 ratingGroup.dataset.value = val;
                                 updateRowRatingUI(row, val);
                                 
-                                // Guardar valor manual modificado por el usuario
-                                userManualRatings[key] = val;
+                                if (ratingMode === 'ia') {
+                                    iaUserCorrections[key] = val;
+                                } else {
+                                    userManualRatings[key] = val;
+                                }
                             });
                         });
 
@@ -1480,7 +1503,8 @@
                     let displayName = shortName;
                     if (ratingMode === 'ia') {
                         const teacherName = course.profesor.trim();
-                        const iaScore = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherName] : null;
+                        const iaData = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherName] : null;
+                        const iaScore = (iaData && typeof iaData === 'object') ? iaData.score : (typeof iaData === 'number' ? iaData : null);
                         if (iaScore !== undefined && iaScore !== null) {
                             displayName = `${ratingLabels[score] || ratingLabels[1]} (${iaScore.toFixed(1)})`;
                         }
