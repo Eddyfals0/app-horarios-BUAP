@@ -22,3 +22,6 @@ Desktop.ini
 *.njsproj
 *.sln
 *.swp
+
+# Temporary scratch folder
+scratch/

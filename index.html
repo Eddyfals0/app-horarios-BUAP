@@ -4,37 +4,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Optimizador de Horarios BUAP</title>
+    <title>Optimizador de Horarios BUAP - Enterprise</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="carreras.js"></script>
+    <script src="calificaciones_ia.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #09090b; /* Zinc 950 (Gris Oscuro Puro) */
         }
 
-        .schedule-card.excelente {
-            border-left-color: #8b5cf6;
+        .schedule-card {
+            border: 1px solid #27272a; /* Zinc 800 */
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* Morado */
-        .schedule-card.bueno {
-            border-left-color: #17a2b8;
-        }
-
-        .schedule-card.regular {
-            border-left-color: #fd7e14;
-        }
-
-        .schedule-card.malo {
-            border-left-color: #dc3545;
+        .schedule-card:hover {
+            background-color: #18181b; /* Zinc 900 */
+            transform: translateY(-2px);
+            border-color: #3f3f46; /* Zinc 700 */
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
         }
 
         .loader {
-            border-top-color: #3498db;
+            border-top-color: #52525b; /* Zinc 500 */
             animation: spin 1s linear infinite;
         }
 
@@ -45,237 +42,417 @@
         }
 
         .conflict-highlight {
-            background-color: rgba(239, 68, 68, 0.2) !important;
+            background-color: rgba(63, 63, 70, 0.25) !important;
+            border-color: #71717a !important;
         }
 
-        .dark .conflict-highlight {
-            background-color: rgba(239, 68, 68, 0.3) !important;
+        /* Smooth Screen Transition with Cubic Bezier */
+        .fade-in-section {
+            animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Custom scrollbar for better look */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Micro-interactions for buttons */
+        .btn-animate {
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-animate:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-animate:active {
+            transform: translateY(0);
+        }
+
+        /* Collapsible Transition */
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            opacity: 0;
+        }
+
+        .collapsible-content.show {
+            max-height: 1600px;
+            opacity: 1;
+        }
+
+        /* Custom scrollbar for subtle look */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
         }
 
         ::-webkit-scrollbar-track {
-            background: #1f2937;
+            background: #09090b;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #4b5563;
-            border-radius: 4px;
+            background: #27272a;
+            border-radius: 3px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
+            background: #3f3f46;
         }
     </style>
 </head>
 
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen flex flex-col">
+<body class="bg-zinc-950 text-zinc-300 min-h-screen flex flex-col antialiased">
 
-    <!-- Navbar Simple -->
-    <nav class="bg-white dark:bg-gray-800 shadow-sm p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold text-blue-800 dark:text-blue-400">📅 Optimizador BUAP</h1>
+    <!-- Global Error Capturer for debugging in client browser -->
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            alert("Error de ejecución JavaScript:\n\n" + message + "\nLínea: " + lineno + "\nArchivo: " + source);
+            return false;
+        };
+    </script>
+
+    <!-- Navbar Sobrio y Corporativo Gris -->
+    <nav class="bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800/80 sticky top-0 z-50 py-3 px-6 transition-all">
+        <div class="container mx-auto flex justify-between items-center gap-4">
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <svg class="h-4.5 w-4.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span class="text-[11px] font-bold tracking-wider text-zinc-200 uppercase">Optimizador BUAP</span>
+            </div>
+            
+            <!-- Cambiador de Pestañas Superior (Top tabs navigation) -->
+            <div class="flex items-center bg-zinc-950 p-0.5 rounded border border-zinc-800/80">
+                <button id="tab-organizer-btn" type="button" class="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all bg-zinc-800 text-zinc-200">
+                    Horarios
+                </button>
+                <button id="tab-curriculum-btn" type="button" class="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all text-zinc-550 hover:text-zinc-350">
+                    Mapas Curriculares
+                </button>
+            </div>
+            
             <button id="reset-app-btn"
-                class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Reiniciar Todo</button>
+                class="text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 px-3 py-1.5 rounded transition-all bg-zinc-900/40 btn-animate flex-shrink-0">
+                Reiniciar
+            </button>
         </div>
     </nav>
 
-    <div id="debug-log" class="bg-black text-green-400 p-2 text-xs font-mono h-20 overflow-y-auto hidden"></div>
-    <div id="main-content" class="container mx-auto p-4 md:p-8 flex-grow">
+    <div id="debug-log" class="bg-zinc-950 text-zinc-400 p-3 text-[11px] font-mono h-16 overflow-y-auto border-b border-zinc-800 hidden"></div>
+    
+    <div id="main-content" class="container mx-auto p-4 md:p-6 flex-grow flex flex-col justify-center max-w-5xl">
 
-        <!-- PANTALLA 1: SELECCIÓN DE CARPETA -->
-        <!-- PANTALLA 1: LOADING / ESTADO INICIAL -->
-        <!-- PANTALLA 1: LOADING / ESTADO INICIAL -->
-        <div id="folder-input-page" class="flex flex-col items-center justify-center h-full py-10">
-            <div
-                class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full text-center border dark:border-gray-700">
-                <div id="loading-folder">
-                    <div
-                        class="loader inline-block w-12 h-12 rounded-full border-4 border-t-blue-500 border-gray-200 mb-4">
-                    </div>
-                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Cargando Catálogo...</h2>
-                    <p class="text-gray-600 dark:text-gray-400">Por favor espera un momento.</p>
+        <!-- Contenedor del Flujo del Organizador para persistencia del estado al navegar -->
+        <div id="organizer-flow-container" class="w-full flex-grow flex flex-col justify-center">
+            <!-- PANTALLA 1: LOADING / ESTADO INICIAL -->
+            <div id="folder-input-page" class="flex flex-col items-center justify-center py-10 my-auto fade-in-section">
+            <div class="bg-zinc-900 border border-zinc-800/60 p-7 rounded shadow-sm max-w-sm w-full text-center">
+                <div id="loading-folder" class="py-4">
+                    <div class="loader inline-block w-8 h-8 rounded-full border-2 border-zinc-800 mb-4"></div>
+                    <h2 class="text-xs font-semibold text-zinc-200 uppercase tracking-wider mb-1.5">Cargando Catálogo</h2>
+                    <p class="text-zinc-500 text-xs">Accediendo a la base de datos de programaciones...</p>
                 </div>
 
-                <div id="folder-error"
-                    class="hidden text-left bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-800">
-                    <h3 class="text-red-600 dark:text-red-400 font-bold text-lg mb-2">⚠️ Error de Carga</h3>
-                    <p class="text-gray-700 dark:text-gray-300 text-sm mb-4" id="folder-error-msg">No se encontraron los
-                        datos.</p>
-                    <div
-                        class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-2 rounded font-mono">
-                        Intenta ejecutar: <br>
-                        <span class="text-blue-600 dark:text-blue-400">python generate_catalog.py</span>
+                <div id="folder-error" class="hidden text-left bg-zinc-950 p-5 rounded border border-zinc-800">
+                    <div class="flex items-start gap-3">
+                        <svg class="h-5 w-5 text-zinc-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                            <h3 class="text-zinc-300 font-semibold text-xs mb-1.5">Error de Carga</h3>
+                            <p class="text-zinc-400 text-xs mb-4" id="folder-error-msg">No se encontraron los datos del catálogo en carreras.js.</p>
+                            <div class="text-[11px] text-zinc-500 bg-zinc-900 p-2.5 rounded font-mono border border-zinc-800 leading-relaxed">
+                                Ejecuta: <br>
+                                <span class="text-blue-400">python generate_catalog.py</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <!-- Elementos legacy ocultos para evitar errores de referencias JS si existen -->
             <input type="file" id="folder-input" class="hidden" />
         </div>
 
         <!-- PANTALLA 2: SELECCIÓN DE CARRERA Y ESPECIALIDAD -->
-        <div id="career-selection-page" class="hidden">
-            <header class="mb-8">
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Selecciona tu Carrera y Especialidad</h2>
-                <p class="text-gray-600 dark:text-gray-400">Explora las carpetas encontradas y elige el archivo CSV
-                    correspondiente.</p>
+        <div id="career-selection-page" class="hidden w-full my-4 fade-in-section">
+            <header class="mb-6">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-200">Selecciona Carrera y Plan</h2>
+                <p class="text-zinc-500 text-xs mt-1">Selecciona el catálogo y el archivo de horarios correspondiente.</p>
             </header>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Lista de Carreras (Izquierda) -->
-                <div class="md:col-span-1 bg-white dark:bg-gray-800 rounded-lg shadow p-4 h-96 overflow-y-auto">
-                    <h3 class="font-bold text-lg mb-4 border-b pb-2 dark:border-gray-700">Carreras</h3>
-                    <ul id="careers-list" class="space-y-2">
+                <!-- Lista de Carreras -->
+                <div class="md:col-span-1 bg-zinc-900 border border-zinc-800/80 rounded p-4 h-96 overflow-y-auto">
+                    <h3 class="font-bold text-[11px] uppercase tracking-wider text-zinc-500 mb-3 pb-2 border-b border-zinc-800">Carreras</h3>
+                    <ul id="careers-list" class="space-y-1">
                         <!-- Items inyectados por JS -->
                     </ul>
                 </div>
 
-                <!-- Lista de Especialidades (Derecha) -->
-                <div class="md:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow p-4 h-96 overflow-y-auto">
-                    <h3 class="font-bold text-lg mb-4 border-b pb-2 dark:border-gray-700">Especialidades (Archivos CSV)
-                    </h3>
-                    <ul id="specialties-list" class="space-y-2">
-                        <li class="text-gray-500 italic">Selecciona una carrera para ver sus especialidades...</li>
+                <!-- Lista de Especialidades -->
+                <div class="md:col-span-2 bg-zinc-900 border border-zinc-800/80 rounded p-4 h-96 overflow-y-auto">
+                    <h3 class="font-bold text-[11px] uppercase tracking-wider text-zinc-500 mb-3 pb-2 border-b border-zinc-800">Archivos Académicos (CSV)</h3>
+                    <ul id="specialties-list" class="space-y-1">
+                        <li class="text-zinc-500 italic text-xs">Selecciona una carrera de la izquierda...</li>
                     </ul>
                 </div>
             </div>
         </div>
 
         <!-- PANTALLA 3: PRE-SELECCIÓN DE MATERIAS -->
-        <div id="subject-filter-page" class="hidden">
-            <header class="mb-6 flex justify-between items-center">
+        <div id="subject-filter-page" class="hidden w-full my-4 fade-in-section">
+            <header class="mb-6 flex justify-between items-center gap-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Selecciona las Materias</h2>
-                    <p class="text-gray-600 dark:text-gray-400">Elige qué materias deseas cursar este semestre de la
-                        lista disponible.</p>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-200 font-semibold font-semibold">Selecciona Materias</h2>
+                    <p class="text-zinc-500 text-xs mt-1">Elige las asignaturas que deseas programar en este ciclo.</p>
                 </div>
                 <button id="confirm-subjects-btn"
-                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg flex items-center">
-                    Continuar
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20"
-                        fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
-                            clip-rule="evenodd" />
+                    class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-semibold text-[11px] uppercase tracking-wider py-2.5 px-5 rounded transition-all flex items-center gap-2 shadow-sm btn-animate">
+                    <span>Siguiente</span>
+                    <svg class="h-3.5 w-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                 </button>
             </header>
 
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
+            <div class="bg-zinc-900 border border-zinc-800 rounded p-5 shadow-sm mb-4">
                 <div class="flex justify-between items-center mb-4">
-                    <span id="selected-count" class="font-semibold text-blue-600 dark:text-blue-400">0 materias
-                        seleccionadas</span>
-                    <div>
-                        <button id="select-all-btn" class="text-sm text-blue-500 hover:underline mr-4">Seleccionar
-                            Todas</button>
-                        <button id="deselect-all-btn" class="text-sm text-gray-500 hover:underline">Deseleccionar
-                            Todas</button>
+                    <span id="selected-count" class="font-bold text-[11px] uppercase tracking-wider text-zinc-400">0 materias seleccionadas</span>
+                    <div class="flex items-center gap-3.5 text-[11px] font-medium">
+                        <button id="select-all-btn" class="text-zinc-400 hover:text-zinc-200 transition-colors">Seleccionar Todas</button>
+                        <span class="text-zinc-800">|</span>
+                        <button id="deselect-all-btn" class="text-zinc-400 hover:text-zinc-200 transition-colors">Limpiar Selección</button>
                     </div>
                 </div>
+                
                 <!-- Buscador -->
-                <input type="text" id="subject-search" placeholder="Buscar materia..."
-                    class="w-full p-2 mb-4 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600 text-sm">
+                <div class="relative mb-4">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </span>
+                    <input type="text" id="subject-search" placeholder="Buscar materia..."
+                        class="w-full pl-9 pr-3.5 py-2 border border-zinc-800 rounded bg-zinc-950 focus:outline-none focus:border-zinc-700 text-sm text-zinc-200 placeholder-zinc-600 transition-colors">
+                </div>
 
                 <div id="checkbox-container"
-                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto p-2">
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[52vh] overflow-y-auto p-1">
                     <!-- Checkboxes inyectados por JS -->
                 </div>
             </div>
         </div>
 
-        <!-- PANTALLA 4: CONFIGURACIÓN DE MAESTROS (Ya existente) -->
-        <div id="selection-page" class="hidden h-full">
-            <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <!-- PANTALLA 4: CONFIGURACIÓN DE MAESTROS -->
+        <div id="selection-page" class="hidden w-full my-4 fade-in-section">
+            <header class="flex justify-between items-center mb-6 gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-blue-800 dark:text-blue-400">Configura tus Preferencias</h1>
-                    <p class="text-sm text-gray-600 dark:text-gray-300">Califica a los profesores y elimina horarios que
-                        no te convengan.</p>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-200 font-semibold font-semibold">Ajustes y Calificaciones</h2>
+                    <p class="text-zinc-500 text-xs mt-1">Evalúa a los profesores y define rangos horarios aceptables.</p>
                 </div>
                 <button id="back-to-filter-btn"
-                    class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors text-sm">
-                    &larr; Volver a Selección de Materias
+                    class="text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 px-3.5 py-2 rounded transition-all bg-zinc-900/40 flex items-center gap-1.5 btn-animate">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>Atrás</span>
                 </button>
             </header>
 
-            <!-- Filtros de hora -->
-            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6">
-                <h3 class="font-bold text-sm mb-2 text-gray-900 dark:text-white uppercase tracking-wider">Filtros
-                    Rápidos</h3>
-                <div class="flex flex-wrap items-center gap-4">
-                    <select id="time-filter-condition"
-                        class="p-2 text-sm border rounded bg-white dark:bg-gray-700 dark:border-gray-600">
-                        <option value="during">Clase durante</option>
-                        <option value="ends_after">Termina después de</option>
-                        <option value="starts_before">Empieza antes de</option>
-                    </select>
-                    <input id="time-filter-value" type="time"
-                        class="p-2 text-sm border rounded dark:bg-gray-700 dark:border-gray-600" value="12:00">
-                    <button id="apply-time-filter"
-                        class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 text-sm font-medium">Aplicar</button>
-                    <button id="restore-options-btn"
-                        class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded hover:bg-yellow-600 text-sm">Restaurar
-                        Borrados</button>
+            <!-- Filtros de hora explicados detalladamente -->
+            <div class="bg-zinc-900 border border-zinc-800/80 p-4 rounded shadow-sm mb-6">
+                <div class="flex flex-col gap-2.5">
+                    <p class="text-zinc-400 font-semibold text-xs uppercase tracking-wider">Ocultar profesores por horarios incómodos:</p>
+                    <div class="flex flex-wrap items-center gap-3 text-sm">
+                        <span class="text-zinc-400 font-medium">Ocultar clases que:</span>
+                        <select id="time-filter-condition"
+                            class="p-1.5 text-xs border border-zinc-800 rounded bg-zinc-950 text-zinc-200 focus:outline-none focus:border-zinc-700">
+                            <option value="starts_at_or_before">Empiecen a las o antes de las</option>
+                            <option value="starts_at_or_after">Empiecen a las o después de las</option>
+                            <option value="during">Tengan clase a las</option>
+                        </select>
+                        <input id="time-filter-value" type="time"
+                            class="p-1.5 text-xs border border-zinc-800 rounded bg-zinc-950 text-zinc-200 focus:outline-none focus:border-zinc-700" value="08:00">
+                        <button id="apply-time-filter"
+                            class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-xs font-semibold px-3.5 py-2 rounded transition-all btn-animate">
+                            Aplicar Filtro (Ocultar)
+                        </button>
+                    </div>
+                    <!-- Área de chips de filtros activos -->
+                    <div class="flex items-center gap-3.5 mt-2.5 pt-2.5 border-t border-zinc-800/40">
+                        <span class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Filtros aplicados:</span>
+                        <div id="active-filters-list" class="flex flex-wrap gap-2 items-center">
+                            <span class="text-zinc-600 text-xs italic">Sin filtros aplicados</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div id="subjects-container" class="space-y-6 pb-20"></div>
+            <!-- Selector de Origen de Calificaciones (Manual vs IA) con Tooltips interactivos -->
+            <div class="bg-zinc-900 border border-zinc-800/80 p-4 rounded shadow-sm mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <svg class="h-4 w-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Origen de Calificación de Maestros:</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-3.5">
+                    <!-- Manual Mode Button -->
+                    <div class="relative flex items-center gap-1.5">
+                        <button id="mode-manual-btn" type="button" class="px-4 py-2 text-xs font-bold rounded border transition-all btn-animate bg-zinc-800 text-zinc-200 border-zinc-700">
+                            Manual
+                        </button>
+                        <div class="group relative">
+                            <button type="button" class="w-4.5 h-4.5 flex items-center justify-center rounded-full bg-zinc-850 hover:bg-zinc-755 border border-zinc-750 text-zinc-450 text-[10px] font-bold focus:outline-none cursor-help">?</button>
+                            <div class="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-950 text-zinc-300 text-[11px] rounded shadow-xl border border-zinc-800 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50 leading-relaxed">
+                                <span class="font-bold text-zinc-100 block mb-0.5">Calificación Manual</span>
+                                Te permite calificar tú mismo a cada profesor según tu propia experiencia o investigación. Pulsa en los pills (H, M, N, R, B, E) de la fila.
+                            </div>
+                        </div>
+                    </div>
 
-            <!-- Sticky Footer for Generate Button -->
+                    <!-- IA Mode Button -->
+                    <div class="relative flex items-center gap-1.5">
+                        <button id="mode-ia-btn" type="button" class="px-4 py-2 text-xs font-bold rounded border transition-all btn-animate bg-zinc-950 text-zinc-500 border-zinc-900/60 hover:text-zinc-300">
+                            Base de Datos IA
+                        </button>
+                        <div class="group relative">
+                            <button type="button" class="w-4.5 h-4.5 flex items-center justify-center rounded-full bg-zinc-850 hover:bg-zinc-755 border border-zinc-750 text-zinc-450 text-[10px] font-bold focus:outline-none cursor-help">?</button>
+                            <div class="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-950 text-zinc-300 text-[11px] rounded shadow-xl border border-zinc-800 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50 leading-relaxed">
+                                <span class="font-bold text-zinc-100 block mb-0.5">Base de Datos IA</span>
+                                Carga automáticamente las calificaciones compiladas de múltiples plataformas públicas de internet (como <i>MisProfesores.com</i>). En caso de no existir datos del profesor, se asignará "Nulo (N)" por defecto.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenedor de materias -->
+            <div id="subjects-container" class="space-y-5 pb-24"></div>
+
+            <!-- Footer para botón Generar -->
             <div
-                class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t dark:border-gray-700 p-4 flex justify-center shadow-lg z-10">
+                class="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 p-4 flex justify-center shadow-lg z-30">
                 <button id="generate-btn"
-                    class="bg-indigo-600 text-white font-bold py-3 px-12 rounded-full hover:bg-indigo-700 transition-transform transform hover:scale-105 shadow-xl text-lg flex items-center">
-                    <span class="mr-2">⚡</span> Generar Horarios
+                    class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-semibold text-xs uppercase tracking-wider py-3 px-14 rounded transition-all shadow flex items-center gap-2 btn-animate">
+                    <svg class="h-4.5 w-4.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>Generar Combinaciones</span>
                 </button>
             </div>
         </div>
 
-        <!-- PANTALLA 5: RESULTADOS (Ya existente) -->
-        <div id="results-page" class="hidden">
-            <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <!-- PANTALLA 5: RESULTADOS -->
+        <div id="results-page" class="hidden w-full my-4 fade-in-section">
+            <header class="flex justify-between items-center mb-6 gap-4">
                 <div>
-                    <h1 class="text-3xl font-bold text-blue-800 dark:text-blue-400">Horarios Generados</h1>
-                    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">Explora las posibles combinaciones.</p>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-200 font-semibold font-semibold font-semibold">Horarios Disponibles</h2>
+                    <p class="text-zinc-500 text-xs mt-1">Resultados combinados sin solapamiento de horas.</p>
                 </div>
                 <button id="back-to-selection-btn"
-                    class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
-                    &larr; Volver a Configurar
+                    class="text-[11px] font-semibold text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 px-3.5 py-2 rounded transition-all bg-zinc-900/40 flex items-center gap-1.5 btn-animate">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span>Ajustes</span>
                 </button>
             </header>
+
             <div id="results-controls"
-                class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6 flex justify-between items-center sticky top-0 z-20">
-                <div>
-                    <label class="font-bold text-gray-900 dark:text-white text-sm uppercase">Ordenar por:</label>
-                    <div class="mt-1 flex flex-wrap gap-4 text-sm">
-                        <label class="flex items-center cursor-pointer"><input type="radio" name="sort-order"
-                                value="combined" checked class="mr-2"><span>Balanceado</span></label>
-                        <label class="flex items-center cursor-pointer"><input type="radio" name="sort-order"
-                                value="rating" class="mr-2"><span>Mejores Profes</span></label>
-                        <label class="flex items-center cursor-pointer"><input type="radio" name="sort-order"
-                                value="compactness" class="mr-2"><span>Menos Huecos</span></label>
+                class="bg-zinc-900 border border-zinc-800 p-3.5 rounded shadow-sm mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 sticky top-16 z-40">
+                <div class="flex items-center gap-3.5">
+                    <span class="font-bold text-[11px] uppercase tracking-wider text-zinc-500 font-semibold font-semibold">Clasificar por:</span>
+                    <div class="flex flex-wrap gap-4 text-xs">
+                        <label class="flex items-center cursor-pointer text-zinc-400 hover:text-zinc-200 transition-colors">
+                            <input type="radio" name="sort-order" value="combined" checked class="mr-1.5 accent-zinc-600">
+                            <span>Balanceado</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer text-zinc-400 hover:text-zinc-200 transition-colors">
+                            <input type="radio" name="sort-order" value="rating" class="mr-1.5 accent-zinc-600">
+                            <span>Mejores Profes</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer text-zinc-400 hover:text-zinc-200 transition-colors">
+                            <input type="radio" name="sort-order" value="compactness" class="mr-1.5 accent-zinc-600">
+                            <span>Menos Huecos</span>
+                        </label>
                     </div>
                 </div>
                 <button id="restore-results-btn"
-                    class="hidden bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 text-sm">Restaurar
-                    Descartado</button>
+                    class="hidden border border-zinc-800 text-zinc-400 hover:text-zinc-200 bg-zinc-900/20 text-xs font-semibold px-3 py-1.5 rounded transition-colors btn-animate">
+                    Restaurar Descartado
+                </button>
             </div>
-            <main id="results-container" class="space-y-4"></main>
+            
+            <main id="results-container" class="space-y-5"></main>
+        </div>
+        
+        </div> <!-- Fin de organizer-flow-container -->
+
+        <!-- PANTALLA EXCLUSIVA: VISUALIZADOR DE MAPAS CURRICULARES (PDF Embed & Zoom) -->
+        <div id="curriculum-viewer-page" class="hidden w-full flex-grow flex flex-col gap-4 fade-in-section">
+            <header class="mb-2">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-200">Mapas Curriculares y Ofertas Académicas</h2>
+                <p class="text-zinc-550 text-xs mt-1">Navega y haz zoom en los mapas de la FCC BUAP para revisar tus materias del ciclo.</p>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow min-h-[68vh]">
+                <!-- Panel Izquierdo: Selección de carrera y ciclo -->
+                <div class="lg:col-span-1 bg-zinc-900 border border-zinc-800/80 rounded p-4 flex flex-col gap-4">
+                    <!-- Selector de Ciclo -->
+                    <div>
+                        <label class="block text-[9px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Plan de Estudios</label>
+                        <select id="curriculum-cycle" class="w-full p-2 text-xs border border-zinc-800 rounded bg-zinc-950 text-zinc-300 focus:outline-none focus:border-zinc-700">
+                            <option value="2024">Plan 2024 (Semestre)</option>
+                            <option value="2016">Plan 2016 (Semestre)</option>
+                        </select>
+                    </div>
+
+                    <!-- Lista de Programas -->
+                    <div class="flex-grow flex flex-col">
+                        <label class="block text-[9px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Carreras disponibles</label>
+                        <ul id="curriculum-list" class="space-y-1.5 overflow-y-auto max-h-[50vh] pr-1">
+                            <!-- Items inyectados dinámicamente -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Panel Derecho: Visualizador interactivo de PDF -->
+                <div class="lg:col-span-3 bg-zinc-950 border border-zinc-800/80 rounded flex flex-col justify-center items-center overflow-hidden min-h-[58vh] relative">
+                    <!-- Visor de PDF nativo con toolbar de zoom -->
+                    <iframe id="curriculum-pdf-viewer" class="w-full h-full border-none hidden" src=""></iframe>
+                    
+                    <!-- Placeholder Inicial -->
+                    <div id="curriculum-placeholder" class="text-center p-8 flex flex-col items-center gap-3">
+                        <svg class="h-9 w-9 text-zinc-700 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <div>
+                            <h3 class="text-zinc-300 font-semibold text-[11px] uppercase tracking-wider mb-1">Ningún mapa curricular seleccionado</h3>
+                            <p class="text-zinc-650 text-xs max-w-xs leading-relaxed">Selecciona un programa académico de la izquierda para desplegar el mapa interactivo de PDFs.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div>
 
+    <!-- Lógica JavaScript Principal -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const debugLog = document.getElementById('debug-log');
-            // debugLog.classList.remove('hidden'); // Uncomment to show always
+            
             function log(msg) {
                 console.log(msg);
                 debugLog.innerHTML += `<div>${new Date().toLocaleTimeString()} - ${msg}</div>`;
-                // Show if error
                 if (msg.startsWith("Error") || msg.startsWith("Fatal")) debugLog.classList.remove('hidden');
             }
 
@@ -311,6 +488,9 @@
             let currentRawData = [];
             let selectedSubjects = new Set();
             let discardedResultsHistory = [];
+            let discardedOptionsHistory = [];
+            let ratingMode = 'manual'; // 'manual' | 'ia'
+            const userManualRatings = {}; // Map: "Materia-Profesor-NRC" -> rating_val
 
             // --- EVENT LISTENERS ---
             folderInput.addEventListener('change', handleFolderSelect);
@@ -321,15 +501,18 @@
                 loadCatalog();
             }, 500);
 
-            // Navegación Básica
-            resetAppBtn.addEventListener('click', () => location.reload()); // Simple reset
+            // Reset
+            resetAppBtn.addEventListener('click', () => {
+                if(confirm("¿Deseas reiniciar todo el proceso?")) {
+                    location.reload();
+                }
+            });
 
             confirmSubjectsBtn.addEventListener('click', () => {
                 if (selectedSubjects.size === 0) {
                     alert("Selecciona al menos una materia para continuar.");
                     return;
                 }
-                // Filtrar datos y pasar a la siguiente pagina
                 const filteredData = currentRawData.filter(item => selectedSubjects.has(item.materia));
                 renderSelectionPage(filteredData);
                 navigateTo(subjectFilterPage, selectionPage);
@@ -337,8 +520,14 @@
 
             backToFilterBtn.addEventListener('click', () => navigateTo(selectionPage, subjectFilterPage));
             backToSelectionBtn.addEventListener('click', () => navigateTo(resultsPage, selectionPage));
+            document.getElementById('apply-time-filter').addEventListener('click', applyTimeFilter);
+            document.getElementById('mode-manual-btn').addEventListener('click', () => setRatingMode('manual'));
+            document.getElementById('mode-ia-btn').addEventListener('click', () => setRatingMode('ia'));
+            document.getElementById('tab-organizer-btn').addEventListener('click', () => switchTab('organizer'));
+            document.getElementById('tab-curriculum-btn').addEventListener('click', () => switchTab('curriculum'));
+            document.getElementById('curriculum-cycle').addEventListener('change', renderCurriculumList);
 
-            // Buscador y Selección de Materias
+            // Filtros e inputs de Materias
             subjectSearch.addEventListener('input', (e) => filterCheckboxes(e.target.value));
             selectAllBtn.addEventListener('click', () => toggleAllCheckboxes(true));
             deselectAllBtn.addEventListener('click', () => toggleAllCheckboxes(false));
@@ -346,42 +535,130 @@
             // Generacion
             generateBtn.addEventListener('click', handleGenerateCombinations);
 
-            // Utilities UI
+            function mapIaScoreToRatingVal(score) {
+                if (score === undefined || score === null) return "1"; // Nulo
+                const num = parseFloat(score);
+                if (isNaN(num)) return "1";
+                if (num < 5.0) return "0"; // Horrible
+                if (num >= 5.0 && num < 6.5) return "2"; // Malo
+                if (num >= 6.5 && num < 8.0) return "3"; // Regular
+                if (num >= 8.0 && num < 9.0) return "4"; // Bueno
+                return "5"; // Excelente
+            }
+
+            function updateRowRatingUI(row, val) {
+                const ratingGroup = row.querySelector('.rating-btn-group');
+                const ratingIndicator = row.querySelector('.rating-indicator');
+                const ratingPills = ratingGroup.querySelectorAll('.rating-pill');
+                
+                // Pills color updating
+                ratingPills.forEach(pill => {
+                    const pillVal = pill.dataset.val;
+                    if (pillVal === val) {
+                        if (pillVal === '5') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-purple-800/90 text-purple-50 border border-purple-600/50";
+                        else if (pillVal === '4') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-emerald-700/90 text-emerald-50 border border-emerald-600/50";
+                        else if (pillVal === '3') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-amber-600/90 text-white border border-amber-500/50";
+                        else if (pillVal === '1') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-zinc-200 text-zinc-950 border border-zinc-300";
+                        else if (pillVal === '2') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-red-800/80 text-red-100 border border-red-700/50";
+                        else if (pillVal === '0') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-red-950/80 text-red-400 border border-red-900/40";
+                    } else {
+                        pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-550 hover:text-zinc-300 hover:bg-zinc-800/40";
+                    }
+                });
+                
+                // Indicator dots color
+                if (val === '5') {
+                    ratingIndicator.className = "rating-indicator h-1.5 w-1.5 rounded-full mr-3 flex-shrink-0 transition-colors bg-purple-500";
+                    ratingIndicator.title = "Excelente";
+                } else if (val === '4') {
+                    ratingIndicator.className = "rating-indicator h-1.5 w-1.5 rounded-full mr-3 flex-shrink-0 transition-colors bg-emerald-500";
+                    ratingIndicator.title = "Bueno";
+                } else if (val === '3') {
+                    ratingIndicator.className = "rating-indicator h-1.5 w-1.5 rounded-full mr-3 flex-shrink-0 transition-colors bg-amber-500";
+                    ratingIndicator.title = "Regular";
+                } else if (val === '1') {
+                    ratingIndicator.className = "rating-indicator h-1.5 w-1.5 rounded-full mr-3 flex-shrink-0 transition-colors bg-zinc-400";
+                    ratingIndicator.title = "Nulo";
+                } else if (val === '2') {
+                    ratingIndicator.className = "rating-indicator h-1.5 w-1.5 rounded-full mr-3 flex-shrink-0 transition-colors bg-red-500";
+                    ratingIndicator.title = "Malo";
+                } else if (val === '0') {
+                    ratingIndicator.className = "rating-indicator h-1.5 w-1.5 rounded-full mr-3 flex-shrink-0 transition-colors bg-red-950";
+                    ratingIndicator.title = "Horrible";
+                }
+            }
+
+            function setRatingMode(mode) {
+                ratingMode = mode;
+                const manualBtn = document.getElementById('mode-manual-btn');
+                const iaBtn = document.getElementById('mode-ia-btn');
+                
+                if (mode === 'manual') {
+                    manualBtn.className = "px-4 py-2 text-xs font-bold rounded border transition-all btn-animate bg-zinc-800 text-zinc-200 border-zinc-700";
+                    iaBtn.className = "px-4 py-2 text-xs font-bold rounded border transition-all btn-animate bg-zinc-950 text-zinc-500 border-zinc-900/60 hover:text-zinc-300";
+                    
+                    document.querySelectorAll('.teacher-option').forEach(row => {
+                        const ratingGroup = row.querySelector('.rating-btn-group');
+                        ratingGroup.classList.remove('pointer-events-none', 'opacity-60');
+                        
+                        const course = JSON.parse(row.dataset.course);
+                        const key = `${course.materia}-${course.profesor}-${course.nrc}`;
+                        const val = userManualRatings[key] || "1";
+                        
+                        ratingGroup.dataset.value = val;
+                        updateRowRatingUI(row, val);
+                    });
+                } else {
+                    iaBtn.className = "px-4 py-2 text-xs font-bold rounded border transition-all btn-animate bg-zinc-800 text-zinc-200 border-zinc-700";
+                    manualBtn.className = "px-4 py-2 text-xs font-bold rounded border transition-all btn-animate bg-zinc-950 text-zinc-500 border-zinc-900/60 hover:text-zinc-300";
+                    
+                    document.querySelectorAll('.teacher-option').forEach(row => {
+                        const ratingGroup = row.querySelector('.rating-btn-group');
+                        ratingGroup.classList.add('pointer-events-none', 'opacity-60');
+                        
+                        const course = JSON.parse(row.dataset.course);
+                        const teacherName = course.profesor.trim();
+                        const iaScore = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherName] : null;
+                        const val = mapIaScoreToRatingVal(iaScore);
+                        
+                        ratingGroup.dataset.value = val;
+                        updateRowRatingUI(row, val);
+                    });
+                }
+            }
+
             function navigateTo(from, to) {
                 from.classList.add('hidden');
                 to.classList.remove('hidden');
+                
+                // Add fade-in animation trigger dynamically
+                to.classList.remove('fade-in-section');
+                void to.offsetWidth; // Trigger reflow for restart animation
+                to.classList.add('fade-in-section');
+                
                 window.scrollTo(0, 0);
             }
 
-            // --- MANEJO DE ARCHIVOS Y CARPETAS ---
-            // --- MANEJO DE ARCHIVOS Y CARPETAS ---
+            // --- MANEJO DE CATÁLOGOS ---
             async function loadCatalog() {
                 loadingFolder.classList.remove('hidden');
                 folderError.classList.add('hidden');
-                if (folderInputPage) {
-                    const btn = folderInputPage.querySelector('label');
-                    if (btn) btn.classList.add('hidden');
-                }
-
+                
                 try {
-                    // Small delay to ensure script load if race condition (rare in head)
                     await new Promise(r => setTimeout(r, 100));
 
                     if (typeof window.CARRERAS_DATA === 'undefined') {
-                        throw new Error("No se han cargado los datos. Asegúrate de que 'carreras.js' existe y se ha generado correctamente.");
+                        throw new Error("El catálogo no está cargado. Ejecuta generate_catalog.py para compilar los horarios.");
                     }
 
-                    const data = window.CARRERAS_DATA;
-                    directoryStructure = data;
-
+                    directoryStructure = window.CARRERAS_DATA;
                     const careers = Object.keys(directoryStructure);
+                    
                     if (careers.length === 0) {
-                        throw new Error("El catálogo está vacío.");
+                        throw new Error("El catálogo de carreras está vacío.");
                     }
 
                     renderCareerList(careers);
-
-                    // Éxito: Ocultar loading y mostrar selección
                     loadingFolder.classList.add('hidden');
                     navigateTo(folderInputPage, careerSelectionPage);
 
@@ -394,35 +671,26 @@
                 }
             }
 
-            // Función placeholder por si el listener antiguo sigue vivo
             function handleFolderSelect(event) { console.log("Manual override"); }
 
             function renderCareerList(careers) {
-                log(`Rendering careers: ${careers.length}`);
                 careersList.innerHTML = '';
-
-                if (careers.length === 0) {
-                    log("No careers to render!");
-                    careersList.innerHTML = '<li class="text-red-500">No se encontraron carreras.</li>';
-                    return;
-                }
-
+                
                 careers.sort().forEach(career => {
-                    // log(`Adding career: ${career}`); // Uncomment if too verbose
                     const li = document.createElement('li');
                     const btn = document.createElement('button');
-                    btn.className = "w-full text-left px-4 py-3 rounded-md hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:bg-blue-100 dark:focus:bg-gray-600 font-medium text-gray-700 dark:text-gray-200 border border-transparent hover:border-blue-200";
+                    btn.className = "w-full text-left px-3 py-2.5 rounded-sm text-[13px] font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 focus:outline-none transition-all border border-transparent btn-animate";
                     btn.textContent = career;
                     btn.addEventListener('click', () => {
-                        // Highlight selected
-                        document.querySelectorAll('#careers-list button').forEach(b => b.classList.remove('bg-blue-100', 'dark:bg-gray-600', 'border-blue-500'));
-                        btn.classList.add('bg-blue-100', 'dark:bg-gray-600', 'border-blue-500');
+                        document.querySelectorAll('#careers-list button').forEach(b => {
+                            b.classList.remove('bg-zinc-800', 'text-zinc-200', 'border-zinc-700');
+                        });
+                        btn.classList.add('bg-zinc-800', 'text-zinc-200', 'border-zinc-700');
                         renderSpecialtyList(career);
                     });
                     li.appendChild(btn);
                     careersList.appendChild(li);
                 });
-                log("Career list finished rendering.");
             }
 
             function renderSpecialtyList(careerName) {
@@ -432,17 +700,14 @@
                 files.forEach(fileObj => {
                     const li = document.createElement('li');
                     const btn = document.createElement('button');
-                    // fileObj es {name: "...", content: "..."}
                     const displayName = fileObj.name.replace('.csv', '').replace(/_/g, ' ');
 
-                    btn.className = "w-full text-left px-4 py-3 rounded-md hover:bg-green-50 dark:hover:bg-gray-700 transition-colors focus:outline-none font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-green-400 group";
+                    btn.className = "w-full text-left px-3.5 py-2.5 rounded-sm text-sm transition-all font-medium text-zinc-300 border border-zinc-800 bg-zinc-900/20 hover:bg-zinc-800/40 focus:outline-none flex justify-between items-center group btn-animate";
                     btn.innerHTML = `
-                        <div class="flex items-center justify-between">
-                            <span>${displayName}</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                            </svg>
-                        </div>`;
+                        <span>${displayName}</span>
+                        <svg class="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>`;
 
                     btn.addEventListener('click', () => loadCSVContent(fileObj.content));
                     li.appendChild(btn);
@@ -453,54 +718,36 @@
             function loadCSVContent(csvText) {
                 try {
                     currentRawData = parseCSVContent(csvText);
-                    if (currentRawData.length === 0) throw new Error("Archivo vacío o formato incorrecto");
+                    if (currentRawData.length === 0) throw new Error("Archivo vacío.");
 
                     renderSubjectSelection(currentRawData);
                     navigateTo(careerSelectionPage, subjectFilterPage);
                 } catch (error) {
-                    alert("Error al procesar el archivo CSV: " + error.message);
+                    alert("Error al cargar horario: " + error.message);
                 }
             }
-
-            // fetchCSV ya no se usa
-            function processCSV(file) { /* Deprecated */ }
 
             // --- PARSING CSV ---
             function parseCSVContent(text) {
                 const lines = text.split('\n');
                 const data = [];
-                // Mapping dias BUAP comunes
                 const dayMap = { 'L': 'Lunes', 'M': 'Miercoles', 'A': 'Martes', 'J': 'Jueves', 'V': 'Viernes', 'S': 'Sábado' };
-
-                // Asumimos que la primera linea es header o validamos formato
-                // Formato esperado: NRC,Clave,Materia,Secc,Dias,Hora,Profesor,Salon
 
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
-                    // Ignorar headers o lineas vacias
                     if (!line || line.startsWith('NRC,')) continue;
 
-                    // Parse CSV line (simple split by comma, ignoring quotes details for now as per sample)
-                    // El sample no usa comillas complejas, split directo es seguro para este caso especifico
-                    // Puede haber comas en nombres? El sample usa format: 
-                    // 48444,CCOS 005,Ensamblador,OO1,L,1000-1059,RODRIGUEZ - PEDROZA BERENICE,1CCO4/303
-
-                    // En caso real, usar un regex CSV parser si hay campos con comas
                     const parts = line.split(',');
                     if (parts.length < 8) continue;
 
                     const nrc = parts[0].trim();
-                    // Clave = parts[1]
                     const materia = parts[2].trim();
-                    // Seccion = parts[3]
-                    const diasRaw = parts[4].trim(); // EJ: "L", "AJ"
-                    const horaRaw = parts[5].trim(); // "1000-1059"
+                    const diasRaw = parts[4].trim(); 
+                    const horaRaw = parts[5].trim(); 
                     const profesor = parts[6].trim();
                     const salon = parts[7].trim();
 
-                    // Procesar Dias Combinados (e.g., "AJ" -> Martes y Jueves)
-                    const dias = diasRaw.split(''); // ['A', 'J']
-
+                    const dias = diasRaw.split(''); 
                     const horarios = [];
                     dias.forEach(dChar => {
                         const dayName = dayMap[dChar];
@@ -516,22 +763,15 @@
                     });
 
                     if (horarios.length > 0) {
-                        // Check if exists (same NRC might appear multiple times for different days in original CSV?)
-                        // El sample tiene lineas separadas para DIAS:
-                        // 48444... L ...
-                        // 48444... A ...
-
-                        // Buscar si ya existe este NRC en nuestra lista acumulada data
                         let existing = data.find(c => c.nrc === nrc);
                         if (!existing) {
                             data.push({
                                 nrc,
-                                materia, // Limpiar nombres "Materia - Sede" si fuera necesario
+                                materia,
                                 profesor,
                                 horarios: horarios
                             });
                         } else {
-                            // Merge horarios
                             existing.horarios.push(...horarios);
                         }
                     }
@@ -540,11 +780,10 @@
             }
 
             function formatRawTime(raw) {
-                // 1000 -> 10:00, 0900 -> 09:00
                 if (raw.length === 4) {
                     return `${raw.substring(0, 2)}:${raw.substring(2, 4)}`;
                 }
-                return raw; // Fallback
+                return raw; 
             }
 
             // --- SELECCIÓN DE MATERIAS (UI) ---
@@ -555,22 +794,27 @@
 
                 uniqueSubjects.forEach(subject => {
                     const label = document.createElement('label');
-                    label.className = "flex items-center space-x-3 p-3 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border dark:border-gray-600 transition-colors";
+                    label.className = "flex items-center gap-3 p-2.5 rounded-sm hover:bg-zinc-800/70 cursor-pointer border border-transparent transition-all duration-200 bg-zinc-800/40";
 
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.value = subject;
-                    checkbox.className = "form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300";
+                    checkbox.className = "form-checkbox h-4 w-4 text-zinc-650 rounded bg-zinc-950 border-zinc-800 focus:ring-zinc-700/30";
 
                     checkbox.addEventListener('change', (e) => {
-                        if (e.target.checked) selectedSubjects.add(subject);
-                        else selectedSubjects.delete(subject);
+                        if (e.target.checked) {
+                            selectedSubjects.add(subject);
+                            label.classList.replace('bg-zinc-800/40', 'bg-zinc-700/60');
+                        } else {
+                            selectedSubjects.delete(subject);
+                            label.classList.replace('bg-zinc-700/60', 'bg-zinc-800/40');
+                        }
                         updateCount();
                     });
 
                     const span = document.createElement('span');
                     span.textContent = subject;
-                    span.className = "text-sm text-gray-700 dark:text-gray-200 select-none";
+                    span.className = "text-sm font-medium text-zinc-200 select-none";
 
                     label.appendChild(checkbox);
                     label.appendChild(span);
@@ -595,36 +839,37 @@
             function toggleAllCheckboxes(checked) {
                 const checkboxes = checkboxContainer.querySelectorAll('input[type="checkbox"]');
                 checkboxes.forEach(cb => {
-                    // Solo modificar visibles si hay búsqueda? Normalmente select all aplica a lo visible
-                    if (cb.closest('label').style.display !== 'none') {
+                    const parentLabel = cb.closest('label');
+                    if (parentLabel.style.display !== 'none') {
                         cb.checked = checked;
-                        if (checked) selectedSubjects.add(cb.value);
-                        else selectedSubjects.delete(cb.value);
+                        if (checked) {
+                            selectedSubjects.add(cb.value);
+                            parentLabel.classList.remove('bg-zinc-800/40');
+                            parentLabel.classList.add('bg-zinc-700/60');
+                        } else {
+                            selectedSubjects.delete(cb.value);
+                            parentLabel.classList.remove('bg-zinc-700/60');
+                            parentLabel.classList.add('bg-zinc-800/40');
+                        }
                     }
                 });
                 updateCount();
             }
 
-            // --- SISTEMA DE HORARIOS (LÓGICA EXISTENTE ADAPTADA) ---
-            let discardedOptionsHistory = [];
+            // --- SISTEMA DE HORARIOS ---
             let subjectColorMap = new Map();
-            let lastDiscardedResult = null;
+            
+            // Sober deep corporate colors with low saturation (opacity /30) to distinguish subjects beautifully
             const colorPalette = [
-                { bg: 'dark:bg-blue-900/50 bg-blue-100', border: 'border-blue-500' }, { bg: 'dark:bg-green-900/50 bg-green-100', border: 'border-green-500' },
-                { bg: 'dark:bg-yellow-900/50 bg-yellow-100', border: 'border-yellow-500' }, { bg: 'dark:bg-red-900/50 bg-red-100', border: 'border-red-500' },
-                { bg: 'dark:bg-purple-900/50 bg-purple-100', border: 'border-purple-500' }, { bg: 'dark:bg-pink-900/50 bg-pink-100', border: 'border-pink-500' },
-                { bg: 'dark:bg-indigo-900/50 bg-indigo-100', border: 'border-indigo-500' }, { bg: 'dark:bg-teal-900/50 bg-teal-100', border: 'border-teal-500' },
-                { bg: 'dark:bg-orange-900/50 bg-orange-100', border: 'border-orange-500' },
+                { bg: 'bg-zinc-900/60 text-zinc-300 border-zinc-800', text: 'text-zinc-200', subtext: 'text-zinc-400' },
+                { bg: 'bg-blue-950/30 text-blue-300 border-blue-900/40', text: 'text-blue-200', subtext: 'text-blue-400' },
+                { bg: 'bg-emerald-950/30 text-emerald-300 border-emerald-900/40', text: 'text-emerald-200', subtext: 'text-emerald-400' },
+                { bg: 'bg-amber-950/30 text-amber-300 border-amber-900/40', text: 'text-amber-200', subtext: 'text-amber-400' },
+                { bg: 'bg-purple-950/30 text-purple-300 border-purple-900/40', text: 'text-purple-200', subtext: 'text-purple-400' },
+                { bg: 'bg-indigo-950/30 text-indigo-300 border-indigo-900/40', text: 'text-indigo-200', subtext: 'text-indigo-400' },
+                { bg: 'bg-cyan-950/30 text-cyan-300 border-cyan-900/40', text: 'text-cyan-200', subtext: 'text-cyan-400' },
+                { bg: 'bg-rose-950/30 text-rose-300 border-rose-900/40', text: 'text-rose-200', subtext: 'text-rose-400' }
             ];
-            const ratingColors = { '5': 'bg-purple-500', '4': 'bg-green-500', '3': 'bg-orange-500', '2': 'bg-red-500', '1': 'bg-gray-400', '0': 'bg-black' };
-
-            // ... Listeners para filtros de horario, generar, etc ...
-            document.getElementById('apply-time-filter').addEventListener('click', applyTimeFilter);
-            document.getElementById('restore-options-btn').addEventListener('click', restoreLastOptions);
-            document.getElementById('restore-results-btn').addEventListener('click', restoreLastResult);
-            document.getElementById('results-controls').addEventListener('change', () => {
-                if (window.currentCombinations) displayResults(window.currentCombinations);
-            });
 
             function renderSelectionPage(courseData) {
                 const subjectsContainer = document.getElementById('subjects-container');
@@ -637,7 +882,6 @@
                 subjectsContainer.innerHTML = '';
                 subjectColorMap.clear();
                 discardedOptionsHistory = [];
-                updateRestoreOptionsButton();
                 let colorIndex = 0;
 
                 Object.keys(subjects).sort().forEach(materia => {
@@ -645,63 +889,102 @@
                         subjectColorMap.set(materia, colorPalette[colorIndex % colorPalette.length]);
                         colorIndex++;
                     }
-                    const color = subjectColorMap.get(materia);
 
                     const subjectCard = document.createElement('div');
-                    subjectCard.className = 'subject-card bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg';
-                    subjectCard.innerHTML = `<div class="flex items-center mb-4"><span class="w-4 h-4 rounded-full ${color.bg} border ${color.border}"></span><h2 class="text-xl md:text-2xl font-bold text-blue-700 dark:text-blue-400 ml-3">${materia}</h2></div><div class="options-container overflow-x-auto"></div>`;
+                    subjectCard.className = 'subject-card bg-zinc-900 border border-zinc-800/40 p-4 rounded-sm transition-all';
+                    subjectCard.innerHTML = `
+                        <div class="flex items-center mb-4">
+                            <span class="w-2 h-2 rounded-sm bg-zinc-700"></span>
+                            <h2 class="text-sm font-semibold text-zinc-200 ml-2 tracking-wide uppercase">${materia}</h2>
+                        </div>
+                        <div class="options-container overflow-x-auto text-sm"></div>`;
 
                     const optionsContainer = subjectCard.querySelector('.options-container');
                     const tableContainer = document.createElement('div');
-                    tableContainer.className = "w-full";
+                    tableContainer.className = "w-full min-w-[700px]";
 
                     const header = document.createElement('div');
-                    header.className = "hidden md:grid md:grid-cols-12 gap-4 bg-gray-100 dark:bg-gray-700 p-3 rounded-t-lg font-semibold text-sm text-gray-600 dark:text-gray-300";
-                    header.innerHTML = `<span class="col-span-4">Profesor</span><span class="col-span-1">NRC</span><span class="col-span-3">Horario</span><span class="col-span-2">Calificación</span><span class="col-span-2 text-center">Acciones</span>`;
+                    header.className = "grid grid-cols-12 gap-2 bg-zinc-950 border border-zinc-800/30 p-2.5 rounded-sm font-semibold text-[10px] uppercase tracking-wider text-zinc-400 mb-2.5";
+                    header.innerHTML = `
+                        <span class="col-span-4 font-semibold">Profesor</span>
+                        <span class="col-span-1 text-center font-semibold">NRC</span>
+                        <span class="col-span-3 font-semibold">Horario</span>
+                        <span class="col-span-3 text-center font-semibold">Calificación</span>
+                        <span class="col-span-1 text-center font-semibold">Descartar</span>`;
                     tableContainer.appendChild(header);
 
                     const bodyContainer = document.createElement('div');
-                    bodyContainer.className = "space-y-4 md:space-y-0";
+                    bodyContainer.className = "space-y-1.5";
 
                     subjects[materia].forEach(course => {
                         const row = document.createElement('div');
-                        row.className = 'teacher-option grid grid-cols-2 md:grid-cols-12 gap-4 p-3 border-b dark:border-gray-700 items-center hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                        row.className = 'teacher-option grid grid-cols-12 gap-2 p-2.5 border border-zinc-800/20 rounded-sm items-center bg-zinc-950/10 text-sm transition-all';
                         row.dataset.course = JSON.stringify(course);
 
-                        const horarioStr = course.horarios.map(h => `${h.dia.substring(0, 3)} ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)}`).join('<br>');
+                        const horarioStr = course.horarios.map(h => `${h.dia.substring(0, 3)} ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)}`).join(', ');
 
                         row.innerHTML = `
-                        <div class="md:col-span-4 col-span-2 flex items-center">
-                            <span class="rating-indicator w-3 h-3 rounded-full mr-3 flex-shrink-0 bg-gray-400"></span>
-                            <div><span class="md:hidden font-bold">Profesor: </span>${course.profesor}</div>
+                        <div class="col-span-4 flex items-center">
+                            <span class="rating-indicator w-1.5 h-1.5 rounded-full mr-3 bg-zinc-750 flex-shrink-0 transition-colors"></span>
+                            <span class="text-zinc-300 font-medium">${course.profesor}</span>
                         </div>
-                        <div class="md:col-span-1 col-span-1"><span class="md:hidden font-bold">NRC: </span>${course.nrc}</div>
-                        <div class="md:col-span-3 col-span-2 text-sm"><span class="md:hidden font-bold">Horario: </span><br class="md:hidden">${horarioStr}</div>
-                        <div class="md:col-span-2 col-span-1">
-                            <select class="calificacion-maestro p-2 border rounded w-full bg-white dark:bg-gray-700 dark:border-gray-600 text-sm">
-                                <option value="5">Excelente</option><option value="4">Bueno</option><option value="3">Regular</option><option value="2">Malo</option><option value="1" selected>Nulo</option><option value="0">Horrible</option>
-                            </select>
+                        <div class="col-span-1 text-center font-mono text-zinc-400 text-xs font-semibold">${course.nrc}</div>
+                        <div class="col-span-3 text-xs text-zinc-400 leading-relaxed">${horarioStr}</div>
+                        <div class="col-span-3 flex justify-center">
+                            <div class="rating-btn-group flex border border-zinc-800 rounded bg-zinc-950/90 p-0.5" data-value="1">
+                                <button type="button" data-val="0" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Horrible">H</button>
+                                <button type="button" data-val="2" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Malo">M</button>
+                                <button type="button" data-val="1" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Nulo (Por defecto)">N</button>
+                                <button type="button" data-val="3" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Regular">R</button>
+                                <button type="button" data-val="4" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Bueno">B</button>
+                                <button type="button" data-val="5" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Excelente">E</button>
+                            </div>
                         </div>
-                        <div class="md:col-span-2 col-span-2 flex justify-center items-center gap-2">
-                            <button class="remove-btn text-red-500 hover:text-red-700 font-bold text-lg p-2" title="Eliminar Opción">🗑️</button>
+                        <div class="col-span-1 flex justify-center items-center">
+                            <button class="remove-btn text-zinc-650 hover:text-zinc-300 p-1.5 transition-all rounded hover:bg-zinc-800/40" title="Eliminar Opción">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
                         </div>`;
                         bodyContainer.appendChild(row);
 
-                        const ratingSelect = row.querySelector('.calificacion-maestro');
+                        const ratingGroup = row.querySelector('.rating-btn-group');
                         const ratingIndicator = row.querySelector('.rating-indicator');
+                        const ratingPills = ratingGroup.querySelectorAll('.rating-pill');
 
-                        const setIndicatorColor = (indicator, value) => {
-                            indicator.className = `rating-indicator w-3 h-3 rounded-full mr-3 flex-shrink-0 ${ratingColors[value] || 'bg-gray-400'}`;
-                        };
+                        // Get initial value based on active mode
+                        let initialVal = "1"; // Default Manual
+                        const key = `${course.materia}-${course.profesor}-${course.nrc}`;
+                        
+                        if (ratingMode === 'ia') {
+                            const teacherName = course.profesor.trim();
+                            const iaScore = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherName] : null;
+                            initialVal = mapIaScoreToRatingVal(iaScore);
+                            ratingGroup.classList.add('pointer-events-none', 'opacity-60');
+                        } else {
+                            initialVal = userManualRatings[key] || "1";
+                            ratingGroup.classList.remove('pointer-events-none', 'opacity-60');
+                        }
+                        ratingGroup.dataset.value = initialVal;
+                        
+                        // Update pills visual style initially
+                        updateRowRatingUI(row, initialVal);
 
-                        ratingSelect.addEventListener('change', (e) => setIndicatorColor(ratingIndicator, e.target.value));
-                        setIndicatorColor(ratingIndicator, ratingSelect.value);
+                        ratingPills.forEach(pill => {
+                            pill.addEventListener('click', () => {
+                                if (ratingMode === 'ia') return; // Prevenir clicks en modo IA
+                                const val = pill.dataset.val;
+                                ratingGroup.dataset.value = val;
+                                updateRowRatingUI(row, val);
+                                
+                                // Guardar valor manual modificado por el usuario
+                                userManualRatings[key] = val;
+                            });
+                        });
 
                         row.querySelector('.remove-btn').addEventListener('click', () => {
-                            discardedOptionsHistory.push([row]);
-                            row.style.display = 'none';
-                            updateRestoreOptionsButton();
-                            updateConflictHighlighting();
+                            toggleRowExclusion(row);
                         });
                     });
 
@@ -720,28 +1003,54 @@
                 return `${h12}:${minutes} ${suffix}`;
             }
 
-            // --- Algoritmo de Filtros y Generación (Reutilizado Simil) ---
+            function toggleRowExclusion(row, forceState) {
+                const isExcluded = forceState !== undefined ? forceState : !row.classList.contains('excluded-option');
+                const removeBtn = row.querySelector('.remove-btn');
+                
+                if (isExcluded) {
+                    row.classList.add('excluded-option', 'opacity-30');
+                    removeBtn.innerHTML = `
+                        <svg class="h-3.5 w-3.5 text-zinc-400 hover:text-zinc-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    `;
+                    removeBtn.title = "Reactivar Opción";
+                } else {
+                    row.classList.remove('excluded-option', 'opacity-30');
+                    removeBtn.innerHTML = `
+                        <svg class="h-3.5 w-3.5 text-zinc-650 hover:text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    `;
+                    removeBtn.title = "Excluir Opción";
+                }
+            }
+
+            let activeFilters = [];
+
+            // --- Algoritmo de Filtros ---
             function applyTimeFilter() {
                 const condition = document.getElementById('time-filter-condition').value;
                 const timeValue = document.getElementById('time-filter-value').value;
-                if (!timeValue) return alert('Selecciona una hora');
-                const timeInt = parseInt(timeValue.replace(':', ''));
+                if (!timeValue) return alert('Selecciona una hora.');
+                const timeInt = Number(timeValue.replace(':', ''));
 
                 let toRemove = [];
 
                 document.querySelectorAll('.teacher-option').forEach(row => {
-                    if (row.style.display === 'none') return;
+                    if (row.classList.contains('excluded-option')) return;
                     const course = JSON.parse(row.dataset.course);
                     let remove = false;
 
-                    if (condition === 'ends_after') {
-                        if (course.horarios.some(h => parseInt(h.fin.replace(':', '')) > timeInt)) remove = true;
-                    } else if (condition === 'starts_before') {
-                        if (course.horarios.some(h => parseInt(h.inicio.replace(':', '')) < timeInt)) remove = true;
+                    if (condition === 'starts_at_or_after') {
+                        if (course.horarios.some(h => Number(h.inicio.replace(':', '')) >= timeInt)) remove = true;
+                    } else if (condition === 'starts_at_or_before') {
+                        if (course.horarios.some(h => Number(h.inicio.replace(':', '')) <= timeInt)) remove = true;
                     } else if (condition === 'during') {
                         if (course.horarios.some(h => {
-                            const s = parseInt(h.inicio.replace(':', ''));
-                            const e = parseInt(h.fin.replace(':', ''));
+                            const s = Number(h.inicio.replace(':', ''));
+                            const e = Number(h.fin.replace(':', ''));
                             return timeInt >= s && timeInt < e;
                         })) remove = true;
                     }
@@ -750,26 +1059,78 @@
                 });
 
                 if (toRemove.length > 0) {
-                    if (confirm(`Se eliminarán ${toRemove.length} opciones. ¿Continuar?`)) {
-                        discardedOptionsHistory.push(toRemove);
-                        toRemove.forEach(r => r.style.display = 'none');
-                        updateRestoreOptionsButton();
-                        updateConflictHighlighting();
-                    }
+                    const conditionLabels = {
+                        starts_at_or_before: 'Empiecen a las o antes de las',
+                        starts_at_or_after: 'Empiecen a las o después de las',
+                        during: 'Clase a las'
+                    };
+                    const filterText = `${conditionLabels[condition]} ${timeValue}`;
+                    
+                    // Excluir visualmente
+                    toRemove.forEach(r => toggleRowExclusion(r, true));
+                    
+                    // Registrar filtro activo
+                    const filterId = Date.now();
+                    activeFilters.push({
+                        id: filterId,
+                        label: filterText,
+                        affectedRows: toRemove
+                    });
+                    
+                    renderActiveFilters();
+                    updateConflictHighlighting();
+                } else {
+                    alert("No se encontraron profesores activos que coincidan con la regla.");
                 }
             }
 
-            function updateRestoreOptionsButton() {
-                const btn = document.getElementById('restore-options-btn');
-                btn.classList.toggle('hidden', discardedOptionsHistory.length === 0);
+            function renderActiveFilters() {
+                const container = document.getElementById('active-filters-list');
+                container.innerHTML = '';
+                
+                if (activeFilters.length === 0) {
+                    container.innerHTML = '<span class="text-zinc-600 text-xs italic">Sin filtros aplicados</span>';
+                    return;
+                }
+                
+                activeFilters.forEach(filter => {
+                    const badge = document.createElement('div');
+                    badge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 text-zinc-300 text-xs border border-zinc-800 font-medium btn-animate";
+                    badge.innerHTML = `
+                        <span>${filter.label}</span>
+                        <button type="button" class="text-zinc-500 hover:text-zinc-200 transition-colors ml-1 focus:outline-none" title="Eliminar regla">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    `;
+                    
+                    badge.querySelector('button').addEventListener('click', () => {
+                        removeActiveFilter(filter.id);
+                    });
+                    
+                    container.appendChild(badge);
+                });
             }
 
-            function restoreLastOptions() {
-                if (discardedOptionsHistory.length === 0) return;
-                const last = discardedOptionsHistory.pop();
-                last.forEach(row => row.style.display = 'grid'); // restaurar display grid original de clases css
-                updateRestoreOptionsButton();
-                updateConflictHighlighting();
+            function removeActiveFilter(id) {
+                const idx = activeFilters.findIndex(f => f.id === id);
+                if (idx > -1) {
+                    const filter = activeFilters[idx];
+                    
+                    filter.affectedRows.forEach(row => {
+                        const stillAffected = activeFilters.some(otherFilter => 
+                            otherFilter.id !== id && otherFilter.affectedRows.includes(row)
+                        );
+                        if (!stillAffected) {
+                            toggleRowExclusion(row, false);
+                        }
+                    });
+                    
+                    activeFilters.splice(idx, 1);
+                    renderActiveFilters();
+                    updateConflictHighlighting();
+                }
             }
 
             function updateConflictHighlighting() {
@@ -784,7 +1145,6 @@
             function restoreLastResult() {
                 if (discardedResultsHistory.length === 0) return;
                 const last = discardedResultsHistory.pop();
-                // Add back to current combinations and re-render
                 if (window.currentCombinations) {
                     window.currentCombinations.push(last);
                     displayResults(window.currentCombinations);
@@ -801,7 +1161,7 @@
                     card.querySelectorAll('.teacher-option').forEach(row => {
                         if (row.style.display !== 'none') {
                             const c = JSON.parse(row.dataset.course);
-                            c.calificacion_maestro = parseInt(row.querySelector('.calificacion-maestro').value);
+                            c.calificacion_maestro = parseInt(row.querySelector('.rating-btn-group').dataset.value);
                             options.push(c);
                         }
                     });
@@ -809,9 +1169,13 @@
                 });
 
                 const courseList = Object.values(coursesBySubject);
-                if (courseList.length === 0) return alert("No hay materias válidas.");
+                if (courseList.length === 0) return alert("Configura y selecciona materias primero.");
 
-                resultsPage.querySelector('#results-container').innerHTML = `<div class="text-center p-10"><div class="loader inline-block w-12 h-12 border-4 border-blue-500 rounded-full border-t-transparent"></div></div>`;
+                resultsPage.querySelector('#results-container').innerHTML = `
+                    <div class="text-center p-10">
+                        <div class="loader inline-block w-6 h-6 border-2 border-zinc-600 rounded-full border-t-transparent mb-3 animate-pulse"></div>
+                        <p class="text-zinc-500 text-xs font-semibold uppercase tracking-wider">Buscando combinaciones viables...</p>
+                    </div>`;
                 navigateTo(selectionPage, resultsPage);
 
                 setTimeout(() => {
@@ -871,7 +1235,14 @@
             function displayResults(combinations) {
                 const container = document.getElementById('results-container');
                 if (combinations.length === 0) {
-                    container.innerHTML = `<div class="text-center text-xl text-gray-500 mt-10">😢 No se encontraron horarios sin conflictos. Intenta ser menos estricto con los filtros.</div>`;
+                    container.innerHTML = `
+                        <div class="text-zinc-550 bg-zinc-900/40 border border-zinc-800 p-8 text-center rounded-sm">
+                            <svg class="h-6 w-6 text-zinc-700 mx-auto mb-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="font-bold text-xs text-zinc-400 uppercase tracking-wide">No se encontraron alternativas.</p>
+                            <p class="text-xs text-zinc-500 mt-1">Disminuye la selección o habilita más maestros para resolver conflictos.</p>
+                        </div>`;
                     return;
                 }
 
@@ -880,63 +1251,90 @@
                 const rated = combinations.map(combo => {
                     const avgRating = combo.reduce((a, c) => a + c.calificacion_maestro, 0) / combo.length;
                     const compactness = calculateCompactnessScore(combo);
-                    // Combined score: Higher rating is better, Lower compactness (gap) is better
                     const score = (avgRating * 10) - compactness;
 
-                    let qClass = 'malo';
-                    if (avgRating >= 4.5) qClass = 'excelente';
-                    else if (avgRating >= 3.5) qClass = 'bueno';
-                    else if (avgRating >= 2.5) qClass = 'regular';
+                    let ratingLabel = 'Nulo';
+                    if (avgRating >= 4.5) ratingLabel = 'Excelente';
+                    else if (avgRating >= 3.5) ratingLabel = 'Bueno';
+                    else if (avgRating >= 2.5) ratingLabel = 'Regular';
+                    else if (avgRating >= 1.5) ratingLabel = 'Malo';
 
-                    return { combo, avgRating, compactness, score, qClass };
+                    return { combo, avgRating, compactness, score, ratingLabel };
                 });
 
                 if (sortOrder === 'rating') rated.sort((a, b) => b.avgRating - a.avgRating);
                 else if (sortOrder === 'compactness') rated.sort((a, b) => a.compactness - b.compactness);
                 else rated.sort((a, b) => b.score - a.score);
 
-                container.innerHTML = `<p class="text-center mb-4 text-gray-500">Se encontraron ${rated.length} combinaciones</p>`;
+                container.innerHTML = `<p class="text-xs uppercase font-bold tracking-wider text-zinc-550 mb-2.5">${rated.length} combinaciones posibles</p>`;
 
-                rated.slice(0, 50).forEach((item, idx) => { // Limit render
+                rated.slice(0, 50).forEach((item, idx) => { 
                     const div = document.createElement('div');
-                    div.className = `schedule-card border-l-8 p-4 rounded-lg bg-white dark:bg-gray-800 shadow-md ${item.qClass}`;
+                    div.className = `schedule-card p-4 rounded-sm bg-zinc-900/40 shadow-sm border border-zinc-800`;
                     div.innerHTML = `
-                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-                         <h3 class="font-bold text-lg dark:text-blue-300">Opción #${idx + 1} <span class="text-sm font-normal text-gray-500">Promedio: ${item.avgRating.toFixed(2)}</span></h3>
+                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3.5 gap-2">
+                         <h3 class="font-semibold text-sm text-zinc-200 tracking-wide uppercase">
+                             Opción #${idx + 1} 
+                             <span class="text-xs font-normal text-zinc-400 ml-2.5 font-mono">Calidad: ${item.ratingLabel} (${item.avgRating.toFixed(2)})</span>
+                         </h3>
                          <div class="flex gap-2 flex-wrap">
-                             <button class="view-btn px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm transition-colors">Ver Horario Visual</button>
-                             <button class="download-hd-btn hidden px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors">📥 Descargar HD</button>
-                             <button class="download-text-btn hidden px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors">📋 Copiar Texto</button>
+                             <button class="view-btn px-3 py-1.5 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-zinc-255 rounded-sm text-xs transition-colors bg-zinc-950/40 font-semibold uppercase tracking-wider btn-animate">Ver Horario</button>
+                             <button class="download-hd-btn hidden px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 rounded-sm text-xs transition-colors font-semibold uppercase tracking-wider flex items-center gap-1.5 btn-animate">
+                                 <svg class="h-3.5 w-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                 </svg>
+                                 <span>Descargar HD</span>
+                             </button>
+                             <button class="download-text-btn hidden px-3 py-1.5 bg-zinc-950/20 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 rounded-sm text-xs transition-colors font-semibold uppercase tracking-wider flex items-center gap-1.5 btn-animate">
+                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                 </svg>
+                                 <span>Copiar</span>
+                             </button>
+                             <button class="discard-combo-btn px-2.5 py-1.5 border border-zinc-800 hover:border-zinc-700 text-zinc-550 hover:text-zinc-450 rounded-sm text-xs transition-colors font-semibold flex items-center justify-center btn-animate">
+                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                 </svg>
+                             </button>
                          </div>
                      </div>
-                     <div class="visual-schedule mt-4 hidden"></div>
-                     <div class="teacher-info mt-4 hidden bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                         <h4 class="font-bold text-md mb-3 text-gray-800 dark:text-gray-200">📊 Información de Maestros</h4>
-                         <div class="teacher-list space-y-2"></div>
+                     <div class="visual-schedule mt-4.5 collapsible-content"></div>
+                     <div class="teacher-info mt-4.5 hidden bg-zinc-950/40 border border-zinc-800 p-3.5 rounded-sm">
+                         <h4 class="font-bold text-[10px] uppercase tracking-wider text-zinc-550 mb-2">Detalles de Maestros</h4>
+                         <div class="teacher-list space-y-1"></div>
                      </div>
-                 `;
+                    `;
 
                     const btn = div.querySelector('.view-btn');
                     const downloadHdBtn = div.querySelector('.download-hd-btn');
                     const downloadTextBtn = div.querySelector('.download-text-btn');
+                    const discardComboBtn = div.querySelector('.discard-combo-btn');
                     const visualSchedule = div.querySelector('.visual-schedule');
                     const teacherInfo = div.querySelector('.teacher-info');
 
                     btn.addEventListener('click', () => {
-                        if (visualSchedule.classList.contains('hidden')) {
+                        if (visualSchedule.classList.contains('hidden') || !visualSchedule.classList.contains('show')) {
                             visualSchedule.innerHTML = generateTableHTML(item.combo);
                             visualSchedule.classList.remove('hidden');
+                            setTimeout(() => {
+                                visualSchedule.classList.add('show');
+                            }, 10);
                             teacherInfo.classList.remove('hidden');
                             downloadHdBtn.classList.remove('hidden');
                             downloadTextBtn.classList.remove('hidden');
                             generateTeacherInfo(item.combo, div.querySelector('.teacher-list'));
-                            btn.textContent = 'Ocultar';
+                            btn.textContent = 'Cerrar';
+                            btn.classList.replace('bg-zinc-950/40', 'bg-zinc-800/40');
                         } else {
-                            visualSchedule.classList.add('hidden');
+                            visualSchedule.classList.remove('show');
+                            setTimeout(() => {
+                                visualSchedule.classList.add('hidden');
+                            }, 350);
                             teacherInfo.classList.add('hidden');
                             downloadHdBtn.classList.add('hidden');
                             downloadTextBtn.classList.add('hidden');
-                            btn.textContent = 'Ver Horario Visual';
+                            btn.textContent = 'Ver Horario';
+                            btn.classList.replace('bg-zinc-800/40', 'bg-zinc-950/40');
                         }
                     });
 
@@ -948,12 +1346,21 @@
                         downloadScheduleAsText(item.combo, `horario_opcion_${idx + 1}.txt`);
                     });
 
+                    discardComboBtn.addEventListener('click', () => {
+                        discardedResultsHistory.push(item.combo);
+                        div.style.display = 'none';
+                        if (window.currentCombinations) {
+                            const cIdx = window.currentCombinations.indexOf(item.combo);
+                            if (cIdx > -1) window.currentCombinations.splice(cIdx, 1);
+                        }
+                        updateRestoreResultsButton();
+                    });
+
                     container.appendChild(div);
                 });
             }
 
             function generateTableHTML(combination) {
-                // Calculate dynamic hour range based on actual class times
                 let minHour = 23, maxHour = 0;
                 combination.forEach(course => {
                     course.horarios.forEach(h => {
@@ -964,33 +1371,31 @@
                     });
                 });
 
-                // Add buffer (1 hour before and after)
                 minHour = Math.max(7, minHour - 1);
                 maxHour = Math.min(21, maxHour + 1);
 
-
                 const hours = Array.from({ length: maxHour - minHour }, (_, i) => i + minHour);
-                let html = `<div class="overflow-x-auto"><table class="w-full text-xs md:text-sm border-collapse" style="table-layout: fixed;"><thead><tr><th class="p-2 border dark:border-gray-700 bg-gray-100 dark:bg-gray-900" style="width: 60px;">Hora</th>`;
-                ['Lun', 'Mar', 'Mie', 'Jue', 'Vie'].forEach(d => html += `<th class="p-2 border dark:border-gray-700 bg-gray-100 dark:bg-gray-900" style="width: calc((100% - 60px) / 5);">${d}</th>`);
+                let html = `<div class="overflow-x-auto"><table class="w-full text-xs border-collapse" style="table-layout: fixed;"><thead><tr><th class="p-2 border border-zinc-800 bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wider text-[10px]" style="width: 60px;">Hora</th>`;
+                ['Lun', 'Mar', 'Mie', 'Jue', 'Vie'].forEach(d => html += `<th class="p-2 border border-zinc-800 bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wider text-[10px]" style="width: calc((100% - 60px) / 5);">${d}</th>`);
                 html += `</tr></thead><tbody>`;
 
                 hours.forEach(h => {
-                    html += `<tr><td class="p-2 border dark:border-gray-700 text-center font-bold text-gray-400" style="width: 60px;">${h}:00</td>`;
+                    html += `<tr><td class="p-2 border border-zinc-800 text-center font-semibold text-zinc-500 text-[10px]" style="width: 60px;">${h}:00</td>`;
                     ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'].forEach(d => {
                         let cell = '';
                         const matches = combination.flatMap(c => c.horarios.filter(sch => sch.dia === d && parseInt(sch.inicio.replace(':', '')) <= h * 100 && parseInt(sch.fin.replace(':', '')) > h * 100).map(sch => ({ ...c, salon: sch.salon })));
 
                         if (matches.length > 0) {
                             matches.forEach(m => {
-                                const color = subjectColorMap.get(m.materia) || { bg: 'bg-gray-200' };
-                                cell += `<div class="${color.bg} p-1 mb-1 rounded border-l-2 ${color.border}">
-                                 <div class="font-bold text-xs leading-tight break-words">${m.materia}</div>
-                                 <div class="text-[10px] leading-tight break-words">${m.profesor}</div>
-                                 <div class="text-[10px] text-gray-500">${m.salon || ''}</div>
+                                const mColor = subjectColorMap.get(m.materia) || colorPalette[0];
+                                cell += `<div class="${mColor.bg} p-2.5 mb-1.5 rounded-sm border shadow-sm leading-snug transition-all duration-200 hover:scale-[1.01] hover:brightness-110">
+                                 <div class="font-bold text-xs break-words uppercase tracking-wide ${mColor.text}">${m.materia}</div>
+                                 <div class="text-[11px] break-words mt-0.5 ${mColor.subtext}">${m.profesor}</div>
+                                 <div class="text-[11px] opacity-75 mt-1 font-mono">NRC ${m.nrc} | Salon ${m.salon || ''}</div>
                              </div>`;
                             });
                         }
-                        html += `<td class="p-1 border dark:border-gray-700 align-top h-16">${cell}</td>`;
+                        html += `<td class="p-1 border border-zinc-800 align-top h-16">${cell}</td>`;
                     });
                     html += `</tr>`;
                 });
@@ -1001,59 +1406,53 @@
             function generateTeacherInfo(combination, container) {
                 container.innerHTML = '';
 
-                // Create table
                 const table = document.createElement('table');
-                table.className = 'w-full text-sm border-collapse';
+                table.className = 'w-full text-xs border-collapse text-left';
 
-                // Header
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
-                    <tr class="bg-gray-200 dark:bg-gray-600">
-                        <th class="p-2 border dark:border-gray-600 text-left">Materia</th>
-                        <th class="p-2 border dark:border-gray-600 text-left">Maestro</th>
-                        <th class="p-2 border dark:border-gray-600 text-center">NRC</th>
-                        <th class="p-2 border dark:border-gray-600 text-center">Calidad</th>
+                    <tr class="bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wider text-[10px] border-b border-zinc-800/60">
+                        <th class="p-2 border border-zinc-800/40 font-semibold">Materia</th>
+                        <th class="p-2 border border-zinc-800/40 font-semibold">Profesor</th>
+                        <th class="p-2 border border-zinc-800/40 text-center font-semibold">NRC</th>
+                        <th class="p-2 border border-zinc-800/40 text-center font-semibold">Calidad</th>
                     </tr>
                 `;
                 table.appendChild(thead);
 
-                // Body
                 const tbody = document.createElement('tbody');
                 combination.forEach(course => {
                     const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-gray-100 dark:hover:bg-gray-600/30';
+                    tr.className = 'hover:bg-zinc-950/20 border-b border-zinc-800/40 transition-colors';
 
-                    // Quality label mapping
-                    const qualityLabels = {
-                        5: 'Excelente',
-                        4: 'Bueno',
-                        3: 'Regular',
-                        2: 'Malo',
-                        1: 'Nulo',
-                        0: 'Horrible'
-                    };
+                    const mColor = subjectColorMap.get(course.materia) || colorPalette[0];
+                    const score = course.calificacion_maestro;
 
-                    // Quality color mapping
-                    const qualityColors = {
-                        5: 'bg-purple-500',
-                        4: 'bg-green-500',
-                        3: 'bg-orange-500',
-                        2: 'bg-red-500',
-                        1: 'bg-gray-400',
-                        0: 'bg-black'
-                    };
-
-                    const qualityLabel = qualityLabels[course.calificacion_maestro] || 'N/A';
-                    const qualityColor = qualityColors[course.calificacion_maestro] || 'bg-gray-400';
+                    // Quality represented by a sleek row of dots (5 dots max)
+                    let dots = '';
+                    for (let d = 1; d <= 5; d++) {
+                        if (d <= score) {
+                            dots += `<span class="w-1.5 h-1.5 rounded-full bg-zinc-300 inline-block mr-1"></span>`;
+                        } else {
+                            dots += `<span class="w-1.5 h-1.5 rounded-full bg-zinc-800 inline-block mr-1 border border-zinc-700/40"></span>`;
+                        }
+                    }
+                    if (score === 0) {
+                        dots = `<span class="text-[9px] text-zinc-650 font-bold uppercase tracking-wider">Horrible</span>`;
+                    }
 
                     tr.innerHTML = `
-                        <td class="p-2 border dark:border-gray-600">${course.materia}</td>
-                        <td class="p-2 border dark:border-gray-600">${course.profesor}</td>
-                        <td class="p-2 border dark:border-gray-600 text-center font-mono">${course.nrc}</td>
-                        <td class="p-2 border dark:border-gray-600 text-center">
-                            <span class="${qualityColor} text-white px-2 py-1 rounded text-xs font-semibold">
-                                ${qualityLabel}
+                        <td class="p-2 border-r border-zinc-800/20">
+                            <span class="${mColor.bg} px-2.5 py-0.5 rounded-sm text-[11px] font-semibold ${mColor.text} border">
+                                ${course.materia}
                             </span>
+                        </td>
+                        <td class="p-2 text-zinc-350 border-r border-zinc-800/20 font-medium">${course.profesor}</td>
+                        <td class="p-2 text-center font-mono text-zinc-300 font-semibold border-r border-zinc-800/20 text-xs">${course.nrc}</td>
+                        <td class="p-2 text-center">
+                            <div class="flex items-center justify-center" title="${ratingLabels[score]}">
+                                ${dots}
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -1063,47 +1462,46 @@
                 container.appendChild(table);
             }
 
-
             function downloadScheduleAsImage(scheduleElement, filename) {
-                // Get parent card to capture both schedule and teacher info
                 const card = scheduleElement.closest('.schedule-card');
 
-                // Create a temporary container with both schedule and teacher info
                 const tempContainer = document.createElement('div');
-                tempContainer.style.padding = '20px';
-                tempContainer.style.backgroundColor = document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff';
+                tempContainer.style.padding = '24px';
+                tempContainer.style.backgroundColor = '#09090b'; /* Force Zinc-950 */
+                tempContainer.style.color = '#d4d4d8';
                 tempContainer.style.position = 'absolute';
                 tempContainer.style.left = '-9999px';
                 tempContainer.style.top = '0';
-                tempContainer.style.width = '1200px'; // Fixed width for consistent export
-                tempContainer.style.maxWidth = '1200px';
+                tempContainer.style.width = '1150px'; 
+                tempContainer.style.maxWidth = '1150px';
+                tempContainer.className = 'dark';
 
-                // Clone schedule and teacher info
                 const scheduleClone = scheduleElement.cloneNode(true);
                 const teacherInfo = card.querySelector('.teacher-info');
                 const teacherClone = teacherInfo ? teacherInfo.cloneNode(true) : null;
 
                 scheduleClone.classList.remove('hidden');
-                if (teacherClone) teacherClone.classList.remove('hidden');
+                scheduleClone.classList.add('show');
+                if (teacherClone) {
+                    teacherClone.classList.remove('hidden');
+                    teacherClone.style.marginTop = '24px';
+                }
 
                 tempContainer.appendChild(scheduleClone);
                 if (teacherClone) tempContainer.appendChild(teacherClone);
 
                 document.body.appendChild(tempContainer);
 
-                // Use html2canvas to capture
                 html2canvas(tempContainer, {
-                    backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
-                    scale: 2, // Reduced scale for better file size but still good quality
+                    backgroundColor: '#09090b',
+                    scale: 2, 
                     logging: false,
                     useCORS: true,
-                    width: 1200,
-                    windowWidth: 1200
+                    width: 1150,
+                    windowWidth: 1150
                 }).then(canvas => {
-                    // Remove temp container
                     document.body.removeChild(tempContainer);
 
-                    // Convert canvas to blob and download
                     canvas.toBlob(blob => {
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -1116,26 +1514,24 @@
                     }, 'image/png');
                 }).catch(err => {
                     console.error('Error generating image:', err);
-                    alert('Error al generar la imagen. Por favor intenta de nuevo.');
+                    alert('Error al exportar imagen.');
                     if (document.body.contains(tempContainer)) {
                         document.body.removeChild(tempContainer);
                     }
                 });
             }
 
-
             function downloadScheduleAsText(combination, filename) {
-                let text = '═══════════════════════════════════════════════\n';
-                text += '           HORARIO - FORMATO TEXTO\n';
-                text += '═══════════════════════════════════════════════\n\n';
+                let text = '===============================================\n';
+                text += '        RESUMEN DE HORARIO SELECCIONADO\n';
+                text += '===============================================\n\n';
 
                 combination.forEach((course, idx) => {
                     text += `${idx + 1}. ${course.materia}\n`;
-                    text += `   Maestro: ${course.profesor}\n`;
+                    text += `   Profesor: ${course.profesor}\n`;
                     text += `   NRC: ${course.nrc}\n`;
                     text += `   Horarios:\n`;
 
-                    // Group by day
                     const byDay = {};
                     course.horarios.forEach(h => {
                         if (!byDay[h.dia]) byDay[h.dia] = [];
@@ -1150,19 +1546,16 @@
                         });
                     });
 
-
                     text += '\n';
                 });
 
-                text += '═══════════════════════════════════════════════\n';
+                text += '===============================================\n';
                 text += `Generado: ${new Date().toLocaleString('es-MX')}\n`;
 
-                // Copy to clipboard instead of downloading
                 navigator.clipboard.writeText(text).then(() => {
-                    alert('✅ Horario copiado al portapapeles! Ahora puedes pegarlo donde quieras.');
+                    alert('✅ Horario copiado al portapapeles.');
                 }).catch(err => {
                     console.error('Error copying to clipboard:', err);
-                    // Fallback: show text in a prompt for manual copy
                     const textarea = document.createElement('textarea');
                     textarea.value = text;
                     textarea.style.position = 'fixed';
@@ -1171,12 +1564,105 @@
                     textarea.select();
                     try {
                         document.execCommand('copy');
-                        alert('✅ Horario copiado al portapapeles!');
+                        alert('✅ Horario copiado.');
                     } catch (e) {
-                        alert('❌ No se pudo copiar automáticamente. Por favor copia manualmente:\n\n' + text);
+                        alert('Error al copiar automáticamente. Copia manual:\n\n' + text);
                     }
                     document.body.removeChild(textarea);
                 });
+            }
+
+            // --- SISTEMA DE MAPAS CURRICULARES (PDF Embeds) ---
+            const curriculumFiles = {
+                "2024": [
+                    { name: "Ingeniería en Ciencias de la Computación (ICC)", file: "ICC_2024.pdf" },
+                    { name: "Licenciatura en Ciencias de la Computación (LCC)", file: "LCC_2024.pdf" },
+                    { name: "Ingeniería en Tecnologías de la Información (ITI)", file: "ITI_2024.pdf" },
+                    { name: "Ingeniería en Ciencia de Datos (ICD)", file: "ICD_2024.pdf" },
+                    { name: "Ingeniería en Ciberseguridad (ICS)", file: "ICS_2024.pdf" }
+                ],
+                "2016": [
+                    { name: "Ingeniería en Ciencias de la Computación (ICC)", file: "ICC_2016.pdf" },
+                    { name: "Licenciatura en Ciencias de la Computación (LCC)", file: "LCC_2016.pdf" },
+                    { name: "Ingeniería en Tecnologías de la Información (ITI)", file: "ITI_2016.pdf" }
+                ]
+            };
+
+            function renderCurriculumList() {
+                const plan = document.getElementById('curriculum-cycle').value;
+                const container = document.getElementById('curriculum-list');
+                const viewer = document.getElementById('curriculum-pdf-viewer');
+                const placeholder = document.getElementById('curriculum-placeholder');
+                
+                container.innerHTML = '';
+                viewer.src = '';
+                viewer.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                
+                const list = curriculumFiles[plan] || [];
+                if (list.length === 0) {
+                    container.innerHTML = '<li class="text-zinc-550 italic text-xs">No hay mapas para este plan.</li>';
+                    return;
+                }
+                
+                list.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = "curriculum-item p-2.5 text-xs rounded border border-zinc-800/40 bg-zinc-950/30 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/20 cursor-pointer transition-all btn-animate flex items-center gap-2";
+                    li.innerHTML = `
+                        <svg class="h-3.5 w-3.5 text-zinc-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span class="font-medium text-left leading-tight">${item.name}</span>
+                    `;
+                    
+                    li.addEventListener('click', () => {
+                        container.querySelectorAll('.curriculum-item').forEach(el => {
+                            el.className = "curriculum-item p-2.5 text-xs rounded border border-zinc-800/40 bg-zinc-950/30 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/20 cursor-pointer transition-all btn-animate flex items-center gap-2";
+                        });
+                        li.className = "curriculum-item p-2.5 text-xs rounded border border-zinc-700 bg-zinc-800 text-zinc-100 cursor-pointer transition-all btn-animate flex items-center gap-2";
+                        
+                        loadCurriculumPDF(plan, item.file);
+                    });
+                    
+                    container.appendChild(li);
+                });
+            }
+
+            function loadCurriculumPDF(plan, filename) {
+                const viewer = document.getElementById('curriculum-pdf-viewer');
+                const placeholder = document.getElementById('curriculum-placeholder');
+                const path = `pdf/Mapas/${plan}/${filename}`;
+                
+                viewer.src = `${path}#toolbar=1&zoom=page-fit`;
+                viewer.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            }
+
+            function switchTab(target) {
+                const orgTab = document.getElementById('tab-organizer-btn');
+                const curTab = document.getElementById('tab-curriculum-btn');
+                const orgContainer = document.getElementById('organizer-flow-container');
+                const curContainer = document.getElementById('curriculum-viewer-page');
+                
+                if (target === 'organizer') {
+                    orgTab.className = "px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all bg-zinc-800 text-zinc-200";
+                    curTab.className = "px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all text-zinc-550 hover:text-zinc-350";
+                    
+                    orgContainer.classList.remove('hidden');
+                    curContainer.classList.add('hidden');
+                } else {
+                    curTab.className = "px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all bg-zinc-800 text-zinc-200";
+                    orgTab.className = "px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-all text-zinc-550 hover:text-zinc-350";
+                    
+                    orgContainer.classList.add('hidden');
+                    curContainer.classList.remove('hidden');
+                    
+                    // Render list only if it hasn't been built yet, preserving selected map and zoom
+                    const container = document.getElementById('curriculum-list');
+                    if (container.children.length === 0) {
+                        renderCurriculumList();
+                    }
+                }
             }
 
         });
