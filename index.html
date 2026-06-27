@@ -7,8 +7,6 @@
     <title>Optimizador de Horarios BUAP - Enterprise</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="carreras.js"></script>
-    <script src="calificaciones_ia.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -252,6 +250,28 @@
                     </span>
                     <input type="text" id="subject-search" placeholder="Buscar materia..."
                         class="w-full pl-9 pr-3.5 py-2 border border-zinc-800 rounded bg-zinc-950 focus:outline-none focus:border-zinc-700 text-sm text-zinc-200 placeholder-zinc-600 transition-colors">
+                </div>
+
+                <!-- Panel de Materias Ocultas (Acordeón) -->
+                <div id="hidden-subjects-panel" class="hidden border border-red-950/40 bg-red-950/5 rounded p-3 mb-4 transition-all">
+                    <button id="toggle-hidden-list-btn" type="button" class="w-full flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors focus:outline-none select-none">
+                        <span class="flex items-center gap-2">
+                            <svg class="h-3.5 w-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Materias cursadas / ocultas (<span id="hidden-subjects-count">0</span>)
+                        </span>
+                        <svg id="hidden-list-arrow" class="h-3.5 w-3.5 transform transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    
+                    <div id="hidden-subjects-list-container" class="hidden mt-3 max-h-[25vh] overflow-y-auto pr-1">
+                        <div id="hidden-subjects-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                            <!-- Items inyectados por JS -->
+                        </div>
+                    </div>
                 </div>
 
                 <div id="checkbox-container"
@@ -549,11 +569,31 @@
             // --- EVENT LISTENERS ---
             folderInput.addEventListener('change', handleFolderSelect);
 
-            // INICIO AUTOMÁTICO
+            // INICIO AUTOMÁTICO CON CACHE-BUSTING DINÁMICO
+            const version = new Date().getTime();
+            function loadScriptAsync(src) {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = `${src}?v=${version}`;
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error(`Error loading ${src}`));
+                    document.head.appendChild(script);
+                });
+            }
+
             setTimeout(() => {
-                log("Calling loadCatalog...");
-                loadCatalog();
-            }, 500);
+                log("Cargando bases de datos de forma dinámica...");
+                Promise.all([
+                    loadScriptAsync('carreras.js'),
+                    loadScriptAsync('calificaciones_ia.js')
+                ]).then(() => {
+                    log("Bases de datos cargadas con éxito. Iniciando catálogo...");
+                    loadCatalog();
+                }).catch(err => {
+                    console.error("Error al cargar dinámicamente: ", err);
+                    loadCatalog(); // Fallback
+                });
+            }, 300);
 
             // Reset
             resetAppBtn.addEventListener('click', () => {
@@ -591,6 +631,20 @@
                 hiddenSubjects.clear();
                 saveHiddenSubjects();
                 renderSubjectSelection(currentRawData);
+            });
+            
+            let isHiddenListOpen = false;
+            document.getElementById('toggle-hidden-list-btn').addEventListener('click', () => {
+                isHiddenListOpen = !isHiddenListOpen;
+                const listContainer = document.getElementById('hidden-subjects-list-container');
+                const arrow = document.getElementById('hidden-list-arrow');
+                if (isHiddenListOpen) {
+                    listContainer.classList.remove('hidden');
+                    arrow.classList.add('rotate-180');
+                } else {
+                    listContainer.classList.add('hidden');
+                    arrow.classList.remove('rotate-180');
+                }
             });
             
             // Cargar materias ocultas al iniciar
@@ -861,6 +915,14 @@
                 checkboxContainer.innerHTML = '';
                 selectedSubjects.clear();
                 
+                // Clear old schedules container cleanly on load/re-render to prevent sync bugs
+                const resultsContainer = document.getElementById('results-container');
+                if (resultsContainer) resultsContainer.innerHTML = '';
+                const restoreBtn = document.getElementById('restore-results-btn');
+                if (restoreBtn) restoreBtn.classList.add('hidden');
+                discardedResultsHistory = [];
+                discardedOptionsHistory = [];
+                
                 // Exclude hidden subjects from listing
                 const uniqueSubjects = [...new Set(data.map(d => d.materia))]
                     .filter(subject => !hiddenSubjects.has(subject))
@@ -919,6 +981,51 @@
                     itemDiv.appendChild(hideBtn);
                     checkboxContainer.appendChild(itemDiv);
                 });
+                
+                // Actualizar panel colapsable de materias ocultas
+                const hiddenPanel = document.getElementById('hidden-subjects-panel');
+                const hiddenList = document.getElementById('hidden-subjects-list');
+                const hiddenCount = document.getElementById('hidden-subjects-count');
+                
+                if (hiddenSubjects.size > 0) {
+                    hiddenPanel.classList.remove('hidden');
+                    hiddenCount.textContent = hiddenSubjects.size;
+                    hiddenList.innerHTML = '';
+                    
+                    [...hiddenSubjects].sort().forEach(sub => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = "flex items-center justify-between p-2 rounded bg-zinc-950 border border-zinc-900 text-xs text-zinc-400";
+                        
+                        const span = document.createElement('span');
+                        span.textContent = sub;
+                        span.className = "font-medium truncate max-w-[80%] text-[10px]";
+                        
+                        const showBtn = document.createElement('button');
+                        showBtn.type = "button";
+                        showBtn.className = "text-zinc-550 hover:text-emerald-400 p-1.5 rounded transition-all bg-zinc-950/20 hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-750 flex items-center justify-center flex-shrink-0 cursor-pointer";
+                        showBtn.title = "Restaurar materia";
+                        showBtn.innerHTML = `
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>`;
+                            
+                        showBtn.addEventListener('click', () => {
+                            hiddenSubjects.delete(sub);
+                            saveHiddenSubjects();
+                            renderSubjectSelection(currentRawData);
+                        });
+                        
+                        itemDiv.appendChild(span);
+                        itemDiv.appendChild(showBtn);
+                        hiddenList.appendChild(itemDiv);
+                    });
+                } else {
+                    hiddenPanel.classList.add('hidden');
+                    isHiddenListOpen = false;
+                    document.getElementById('hidden-subjects-list-container').classList.add('hidden');
+                    document.getElementById('hidden-list-arrow').classList.remove('rotate-180');
+                }
                 
                 updateCount();
                 updateHiddenSubjectsControls();
@@ -1012,6 +1119,9 @@
                         <span class="col-span-3 font-semibold">Horario</span>
                         <span class="col-span-3 text-center font-semibold">Calificación</span>
                         <span class="col-span-1 text-center font-semibold">Descartar</span>`;
+                    
+                    // Ocultar cabeceras en móviles ya que desalinea la UI responsiva
+                    header.className = "hidden lg:grid grid-cols-12 gap-2 px-2.5 py-1.5 bg-zinc-900 border border-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-400 mt-4 rounded-t-sm";
                     tableContainer.appendChild(header);
 
                     const bodyContainer = document.createElement('div');
@@ -1019,7 +1129,7 @@
 
                     subjects[materia].forEach(course => {
                         const row = document.createElement('div');
-                        row.className = 'teacher-option grid grid-cols-12 gap-2 p-2.5 border border-zinc-800/20 rounded-sm items-center bg-zinc-950/10 text-sm transition-all';
+                        row.className = 'teacher-option flex flex-col gap-3.5 p-3 border border-zinc-800/20 rounded-sm bg-zinc-950/10 text-sm transition-all lg:grid lg:grid-cols-12 lg:gap-2 lg:p-2.5 lg:items-center';
                         row.dataset.course = JSON.stringify(course);
 
                         const horarioStr = course.horarios.map(h => `${h.dia.substring(0, 3)} ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)}`).join(', ');
@@ -1041,14 +1151,29 @@
                         }
 
                         row.innerHTML = `
-                        <div class="col-span-4 flex items-center overflow-hidden">
-                            <span class="rating-indicator w-1.5 h-1.5 rounded-full mr-3 bg-zinc-750 flex-shrink-0 transition-colors"></span>
-                            <span class="text-zinc-300 font-medium truncate max-w-[70%]">${course.profesor}</span>
-                            ${iaBadge}
+                        <div class="flex items-center justify-between lg:col-span-4 overflow-hidden">
+                            <div class="flex items-center overflow-hidden">
+                                <span class="rating-indicator w-1.5 h-1.5 rounded-full mr-3 bg-zinc-750 flex-shrink-0 transition-colors"></span>
+                                <span class="text-zinc-300 font-semibold lg:font-medium truncate max-w-[190px] lg:max-w-[70%]">${course.profesor}</span>
+                                ${iaBadge}
+                            </div>
+                            <!-- Botón de descartar móvil (derecha del nombre) -->
+                            <button class="remove-btn text-zinc-650 hover:text-zinc-300 p-1.5 transition-all rounded hover:bg-zinc-800/40 lg:hidden" title="Eliminar Opción">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
                         </div>
-                        <div class="col-span-1 text-center font-mono text-zinc-400 text-xs font-semibold">${course.nrc}</div>
-                        <div class="col-span-3 text-xs text-zinc-400 leading-relaxed">${horarioStr}</div>
-                        <div class="col-span-3 flex justify-center">
+                        
+                        <div class="flex items-center gap-3 lg:contents">
+                            <div class="text-zinc-400 text-xs font-semibold font-mono bg-zinc-900 border border-zinc-800/80 px-2 py-0.5 rounded lg:bg-transparent lg:border-none lg:p-0 lg:col-span-1 lg:text-center">
+                                <span class="lg:hidden text-zinc-550 font-normal">NRC: </span>${course.nrc}
+                            </div>
+                            <div class="text-xs text-zinc-405 leading-relaxed flex-grow lg:col-span-3">${horarioStr}</div>
+                        </div>
+
+                        <div class="flex justify-between items-center gap-2 lg:justify-center lg:col-span-3">
+                            <span class="text-zinc-550 text-xs font-semibold uppercase tracking-wider lg:hidden">Calificación:</span>
                             <div class="rating-btn-group flex border border-zinc-800 rounded bg-zinc-950/90 p-0.5" data-value="1">
                                 <button type="button" data-val="0" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Horrible">H</button>
                                 <button type="button" data-val="2" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Malo">M</button>
@@ -1058,7 +1183,8 @@
                                 <button type="button" data-val="5" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Excelente">E</button>
                             </div>
                         </div>
-                        <div class="col-span-1 flex justify-center items-center">
+                        
+                        <div class="col-span-1 hidden lg:flex justify-center items-center">
                             <button class="remove-btn text-zinc-650 hover:text-zinc-300 p-1.5 transition-all rounded hover:bg-zinc-800/40" title="Eliminar Opción">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1106,8 +1232,10 @@
                             });
                         });
 
-                        row.querySelector('.remove-btn').addEventListener('click', () => {
-                            toggleRowExclusion(row);
+                        row.querySelectorAll('.remove-btn').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                toggleRowExclusion(row);
+                            });
                         });
                     });
 
@@ -1529,8 +1657,11 @@
             function generateTeacherInfo(combination, container) {
                 container.innerHTML = '';
 
+                const wrapper = document.createElement('div');
+                wrapper.className = "w-full overflow-x-auto rounded border border-zinc-800/40 bg-zinc-950/20";
+
                 const table = document.createElement('table');
-                table.className = 'w-full text-xs border-collapse text-left';
+                table.className = 'w-full text-xs border-collapse text-left min-w-[500px] lg:min-w-0';
 
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
@@ -1610,7 +1741,8 @@
                 });
                 table.appendChild(tbody);
 
-                container.appendChild(table);
+                wrapper.appendChild(table);
+                container.appendChild(wrapper);
             }
 
             function downloadScheduleAsImage(scheduleElement, filename) {
