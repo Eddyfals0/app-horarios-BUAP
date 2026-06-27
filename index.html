@@ -1432,6 +1432,31 @@
                 `;
                 table.appendChild(thead);
 
+                const ratingLabels = {
+                    0: "Horrible",
+                    2: "Malo",
+                    1: "Nulo",
+                    3: "Regular",
+                    4: "Bueno",
+                    5: "Excelente"
+                };
+                const ratingClasses = {
+                    0: "bg-red-950/80 border-red-800/60 text-red-400",
+                    2: "bg-red-800/80 border-red-700/60 text-red-100",
+                    1: "bg-zinc-200 border-zinc-300 text-zinc-950",
+                    3: "bg-amber-600/90 border-amber-500/60 text-white",
+                    4: "bg-emerald-700/90 border-emerald-600/60 text-emerald-50",
+                    5: "bg-purple-800/90 border-purple-700/60 text-purple-50"
+                };
+                const ratingShortNames = {
+                    0: "Horrible (H)",
+                    2: "Malo (M)",
+                    1: "Nulo (N)",
+                    3: "Regular (R)",
+                    4: "Bueno (B)",
+                    5: "Excelente (E)"
+                };
+
                 const tbody = document.createElement('tbody');
                 combination.forEach(course => {
                     const tr = document.createElement('tr');
@@ -1440,18 +1465,11 @@
                     const mColor = subjectColorMap.get(course.materia) || colorPalette[0];
                     const score = course.calificacion_maestro;
 
-                    // Quality represented by a sleek row of dots (5 dots max)
-                    let dots = '';
-                    for (let d = 1; d <= 5; d++) {
-                        if (d <= score) {
-                            dots += `<span class="w-1.5 h-1.5 rounded-full bg-zinc-300 inline-block mr-1"></span>`;
-                        } else {
-                            dots += `<span class="w-1.5 h-1.5 rounded-full bg-zinc-800 inline-block mr-1 border border-zinc-700/40"></span>`;
-                        }
-                    }
-                    if (score === 0) {
-                        dots = `<span class="text-[9px] text-zinc-650 font-bold uppercase tracking-wider">Horrible</span>`;
-                    }
+                    const ratingClass = ratingClasses[score] || ratingClasses[1];
+                    const ratingLabel = ratingLabels[score] || ratingLabels[1];
+                    const shortName = ratingShortNames[score] || ratingShortNames[1];
+
+                    const badge = `<span class="${ratingClass} border px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider">${shortName}</span>`;
 
                     tr.innerHTML = `
                         <td class="p-2 border-r border-zinc-800/20">
@@ -1462,8 +1480,8 @@
                         <td class="p-2 text-zinc-350 border-r border-zinc-800/20 font-medium">${course.profesor}</td>
                         <td class="p-2 text-center font-mono text-zinc-300 font-semibold border-r border-zinc-800/20 text-xs">${course.nrc}</td>
                         <td class="p-2 text-center">
-                            <div class="flex items-center justify-center" title="${ratingLabels[score]}">
-                                ${dots}
+                            <div class="flex items-center justify-center" title="${ratingLabel}">
+                                ${badge}
                             </div>
                         </td>
                     `;
