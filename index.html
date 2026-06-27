@@ -405,7 +405,7 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow min-h-[68vh]">
                 <!-- Panel Izquierdo: Selección de carrera y ciclo -->
-                <div class="lg:col-span-1 bg-zinc-900 border border-zinc-800/80 rounded p-4 flex flex-col gap-4">
+                <div id="curriculum-sidebar" class="lg:col-span-1 bg-zinc-900 border border-zinc-800/80 rounded p-4 flex flex-col gap-4">
                     <!-- Selector de Ciclo -->
                     <div>
                         <label class="block text-[9px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Plan de Estudios</label>
@@ -425,18 +425,29 @@
                 </div>
 
                 <!-- Panel Derecho: Visualizador interactivo de PDF -->
-                <div class="lg:col-span-3 bg-zinc-950 border border-zinc-800/80 rounded flex flex-col justify-center items-center overflow-hidden min-h-[58vh] relative">
+                <div id="curriculum-viewer-container" class="lg:col-span-3 bg-zinc-950 border border-zinc-800/80 rounded flex flex-col justify-start items-center overflow-hidden min-h-[58vh] relative">
+                    <!-- Barra de herramientas del visor (Header del PDF) -->
+                    <div id="pdf-viewer-header" class="w-full bg-zinc-900 border-b border-zinc-800/85 px-4 py-2.5 flex justify-between items-center hidden">
+                        <span id="pdf-viewer-title" class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 truncate max-w-[70%]">Ningún mapa curricular cargado</span>
+                        <button id="toggle-expand-pdf-btn" class="text-[9px] font-bold uppercase tracking-wider text-zinc-300 hover:text-zinc-100 border border-zinc-800 hover:border-zinc-750 bg-zinc-950/40 px-3 py-1.5 rounded transition-all btn-animate flex items-center gap-1.5">
+                            <svg id="expand-icon-svg" class="h-3.5 w-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                            </svg>
+                            <span id="expand-btn-text">Maximizar</span>
+                        </button>
+                    </div>
+
                     <!-- Visor de PDF nativo con toolbar de zoom -->
-                    <iframe id="curriculum-pdf-viewer" class="w-full h-full border-none hidden" src=""></iframe>
+                    <iframe id="curriculum-pdf-viewer" class="w-full h-full border-none hidden flex-grow" src=""></iframe>
                     
                     <!-- Placeholder Inicial -->
-                    <div id="curriculum-placeholder" class="text-center p-8 flex flex-col items-center gap-3">
+                    <div id="curriculum-placeholder" class="text-center p-8 flex flex-col items-center gap-3 my-auto">
                         <svg class="h-9 w-9 text-zinc-700 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <div>
                             <h3 class="text-zinc-300 font-semibold text-[11px] uppercase tracking-wider mb-1">Ningún mapa curricular seleccionado</h3>
-                            <p class="text-zinc-650 text-xs max-w-xs leading-relaxed">Selecciona un programa académico de la izquierda para desplegar el mapa interactivo de PDFs.</p>
+                            <p class="text-zinc-655 text-xs max-w-xs leading-relaxed">Selecciona un programa académico de la izquierda para desplegar el mapa interactivo de PDFs.</p>
                         </div>
                     </div>
                 </div>
@@ -526,6 +537,7 @@
             document.getElementById('tab-organizer-btn').addEventListener('click', () => switchTab('organizer'));
             document.getElementById('tab-curriculum-btn').addEventListener('click', () => switchTab('curriculum'));
             document.getElementById('curriculum-cycle').addEventListener('change', renderCurriculumList);
+            document.getElementById('toggle-expand-pdf-btn').addEventListener('click', togglePdfExpand);
 
             // Filtros e inputs de Materias
             subjectSearch.addEventListener('input', (e) => filterCheckboxes(e.target.value));
@@ -1588,6 +1600,8 @@
                 ]
             };
 
+            let isPdfExpanded = false;
+
             function renderCurriculumList() {
                 const plan = document.getElementById('curriculum-cycle').value;
                 const container = document.getElementById('curriculum-list');
@@ -1598,6 +1612,12 @@
                 viewer.src = '';
                 viewer.classList.add('hidden');
                 placeholder.classList.remove('hidden');
+                
+                // Hide header and collapse layout on plan change
+                document.getElementById('pdf-viewer-header').classList.add('hidden');
+                if (isPdfExpanded) {
+                    togglePdfExpand();
+                }
                 
                 const list = curriculumFiles[plan] || [];
                 if (list.length === 0) {
@@ -1621,21 +1641,49 @@
                         });
                         li.className = "curriculum-item p-2.5 text-xs rounded border border-zinc-700 bg-zinc-800 text-zinc-100 cursor-pointer transition-all btn-animate flex items-center gap-2";
                         
-                        loadCurriculumPDF(plan, item.file);
+                        loadCurriculumPDF(plan, item.file, item.name);
                     });
                     
                     container.appendChild(li);
                 });
             }
 
-            function loadCurriculumPDF(plan, filename) {
+            function loadCurriculumPDF(plan, filename, itemName) {
                 const viewer = document.getElementById('curriculum-pdf-viewer');
                 const placeholder = document.getElementById('curriculum-placeholder');
+                const header = document.getElementById('pdf-viewer-header');
+                const title = document.getElementById('pdf-viewer-title');
                 const path = `pdf/Mapas/${plan}/${filename}`;
                 
                 viewer.src = `${path}#toolbar=1&zoom=page-fit`;
                 viewer.classList.remove('hidden');
                 placeholder.classList.add('hidden');
+                
+                header.classList.remove('hidden');
+                title.textContent = `${itemName} (${plan})`;
+            }
+
+            function togglePdfExpand() {
+                const sidebar = document.getElementById('curriculum-sidebar');
+                const container = document.getElementById('curriculum-viewer-container');
+                const btnText = document.getElementById('expand-btn-text');
+                const btnIcon = document.getElementById('expand-icon-svg');
+                
+                isPdfExpanded = !isPdfExpanded;
+                
+                if (isPdfExpanded) {
+                    sidebar.classList.add('hidden');
+                    container.classList.remove('lg:col-span-3');
+                    container.classList.add('lg:col-span-4');
+                    btnText.textContent = "Mostrar Lista";
+                    btnIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4m0 0H4m5 0L3.5 9.5M15 9V4m0 0h5m-5 0l5.5 5.5M9 15v5m0 0H4m5 0L3.5 14.5M15 15v5m0 0h5m-5 0l5.5-5.5" />`;
+                } else {
+                    sidebar.classList.remove('hidden');
+                    container.classList.remove('lg:col-span-4');
+                    container.classList.add('lg:col-span-3');
+                    btnText.textContent = "Maximizar";
+                    btnIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />`;
+                }
             }
 
             function switchTab(target) {
@@ -1657,7 +1705,6 @@
                     orgContainer.classList.add('hidden');
                     curContainer.classList.remove('hidden');
                     
-                    // Render list only if it hasn't been built yet, preserving selected map and zoom
                     const container = document.getElementById('curriculum-list');
                     if (container.children.length === 0) {
                         renderCurriculumList();
