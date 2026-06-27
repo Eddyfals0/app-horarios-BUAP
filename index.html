@@ -223,12 +223,23 @@
             </header>
 
             <div class="bg-zinc-900 border border-zinc-800 rounded p-5 shadow-sm mb-4">
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <span id="selected-count" class="font-bold text-[11px] uppercase tracking-wider text-zinc-400">0 materias seleccionadas</span>
-                    <div class="flex items-center gap-3.5 text-[11px] font-medium">
+                    <div class="flex items-center gap-3.5 text-[11px] font-medium flex-wrap">
                         <button id="select-all-btn" class="text-zinc-400 hover:text-zinc-200 transition-colors">Seleccionar Todas</button>
-                        <span class="text-zinc-800">|</span>
+                        <span class="text-zinc-850">|</span>
                         <button id="deselect-all-btn" class="text-zinc-400 hover:text-zinc-200 transition-colors">Limpiar Selección</button>
+                        <span id="restore-subjects-separator" class="text-zinc-850 hidden">|</span>
+                        <button id="restore-hidden-subjects-btn" class="text-red-400/90 hover:text-red-300 transition-colors hidden">Restablecer Ocultas</button>
+                        <div class="group relative inline-block">
+                            <button type="button" class="w-4.5 h-4.5 flex items-center justify-center rounded-full bg-zinc-950 hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-750 text-zinc-450 hover:text-zinc-250 text-[10px] font-bold transition-all focus:outline-none cursor-help">?</button>
+                            <div class="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-950 text-zinc-350 text-[11px] rounded shadow-xl border border-zinc-800 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50 leading-relaxed font-normal normal-case text-left">
+                                <span class="font-bold text-zinc-100 block mb-1">Ocultar Materias Cursadas</span>
+                                Haz clic en el icono de ojo tachado al lado de cualquier materia para eliminarla temporalmente de la lista (ideal para las que ya has aprobado).
+                                <br><br>
+                                Se guarda en el almacenamiento del navegador para persistir en tus próximas visitas.
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -505,6 +516,35 @@
             let ratingMode = 'manual'; // 'manual' | 'ia'
             const userManualRatings = {}; // Map: "Materia-Profesor-NRC" -> rating_val
             const iaUserCorrections = {}; // Map: "Materia-Profesor-NRC" -> rating_val (overrides on IA scores)
+            let hiddenSubjects = new Set(); // Set of hidden (completed) subjects
+
+            function loadHiddenSubjects() {
+                const stored = localStorage.getItem('buap_hidden_subjects');
+                if (stored) {
+                    hiddenSubjects = new Set(JSON.parse(stored));
+                } else {
+                    hiddenSubjects = new Set();
+                }
+            }
+
+            function saveHiddenSubjects() {
+                localStorage.setItem('buap_hidden_subjects', JSON.stringify([...hiddenSubjects]));
+            }
+
+            function updateHiddenSubjectsControls() {
+                const restoreBtn = document.getElementById('restore-hidden-subjects-btn');
+                const separator = document.getElementById('restore-subjects-separator');
+                if (!restoreBtn || !separator) return;
+                
+                if (hiddenSubjects.size > 0) {
+                    restoreBtn.classList.remove('hidden');
+                    separator.classList.remove('hidden');
+                    restoreBtn.textContent = `Restablecer Ocultas (${hiddenSubjects.size})`;
+                } else {
+                    restoreBtn.classList.add('hidden');
+                    separator.classList.add('hidden');
+                }
+            }
 
             // --- EVENT LISTENERS ---
             folderInput.addEventListener('change', handleFolderSelect);
@@ -546,6 +586,15 @@
             subjectSearch.addEventListener('input', (e) => filterCheckboxes(e.target.value));
             selectAllBtn.addEventListener('click', () => toggleAllCheckboxes(true));
             deselectAllBtn.addEventListener('click', () => toggleAllCheckboxes(false));
+            
+            document.getElementById('restore-hidden-subjects-btn').addEventListener('click', () => {
+                hiddenSubjects.clear();
+                saveHiddenSubjects();
+                renderSubjectSelection(currentRawData);
+            });
+            
+            // Cargar materias ocultas al iniciar
+            loadHiddenSubjects();
 
             // Generacion
             generateBtn.addEventListener('click', handleGenerateCombinations);
@@ -811,11 +860,18 @@
             function renderSubjectSelection(data) {
                 checkboxContainer.innerHTML = '';
                 selectedSubjects.clear();
-                const uniqueSubjects = [...new Set(data.map(d => d.materia))].sort();
+                
+                // Exclude hidden subjects from listing
+                const uniqueSubjects = [...new Set(data.map(d => d.materia))]
+                    .filter(subject => !hiddenSubjects.has(subject))
+                    .sort();
 
                 uniqueSubjects.forEach(subject => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = "subject-item-row flex items-center justify-between p-2.5 rounded-sm bg-zinc-800/40 hover:bg-zinc-800/70 border border-zinc-850 hover:border-zinc-800 transition-all duration-200 group/item";
+
                     const label = document.createElement('label');
-                    label.className = "flex items-center gap-3 p-2.5 rounded-sm hover:bg-zinc-800/70 cursor-pointer border border-transparent transition-all duration-200 bg-zinc-800/40";
+                    label.className = "flex items-center gap-3 cursor-pointer flex-grow select-none";
 
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
@@ -825,23 +881,47 @@
                     checkbox.addEventListener('change', (e) => {
                         if (e.target.checked) {
                             selectedSubjects.add(subject);
-                            label.classList.replace('bg-zinc-800/40', 'bg-zinc-700/60');
+                            itemDiv.classList.replace('bg-zinc-800/40', 'bg-zinc-700/60');
                         } else {
                             selectedSubjects.delete(subject);
-                            label.classList.replace('bg-zinc-700/60', 'bg-zinc-800/40');
+                            itemDiv.classList.replace('bg-zinc-700/60', 'bg-zinc-800/40');
                         }
                         updateCount();
                     });
 
                     const span = document.createElement('span');
                     span.textContent = subject;
-                    span.className = "text-sm font-medium text-zinc-200 select-none";
+                    span.className = "text-xs font-semibold text-zinc-200";
 
                     label.appendChild(checkbox);
                     label.appendChild(span);
-                    checkboxContainer.appendChild(label);
+
+                    // Botón para ocultar materia (ya cursada)
+                    const hideBtn = document.createElement('button');
+                    hideBtn.type = "button";
+                    hideBtn.className = "text-zinc-550 hover:text-red-400 p-1.5 rounded transition-all bg-zinc-950/20 hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-750 flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity flex-shrink-0 cursor-pointer";
+                    hideBtn.title = "Ocultar materia (ya cursada)";
+                    hideBtn.innerHTML = `
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                        </svg>`;
+                    
+                    hideBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        hiddenSubjects.add(subject);
+                        saveHiddenSubjects();
+                        selectedSubjects.delete(subject);
+                        renderSubjectSelection(currentRawData);
+                    });
+
+                    itemDiv.appendChild(label);
+                    itemDiv.appendChild(hideBtn);
+                    checkboxContainer.appendChild(itemDiv);
                 });
+                
                 updateCount();
+                updateHiddenSubjectsControls();
             }
 
             function updateCount() {
@@ -850,27 +930,27 @@
 
             function filterCheckboxes(query) {
                 const q = query.toLowerCase();
-                const labels = checkboxContainer.querySelectorAll('label');
-                labels.forEach(lbl => {
-                    const text = lbl.querySelector('span').textContent.toLowerCase();
-                    lbl.style.display = text.includes(q) ? 'flex' : 'none';
+                const rows = checkboxContainer.querySelectorAll('.subject-item-row');
+                rows.forEach(row => {
+                    const text = row.querySelector('span').textContent.toLowerCase();
+                    row.style.display = text.includes(q) ? 'flex' : 'none';
                 });
             }
 
             function toggleAllCheckboxes(checked) {
                 const checkboxes = checkboxContainer.querySelectorAll('input[type="checkbox"]');
                 checkboxes.forEach(cb => {
-                    const parentLabel = cb.closest('label');
-                    if (parentLabel.style.display !== 'none') {
+                    const parentRow = cb.closest('.subject-item-row');
+                    if (parentRow && parentRow.style.display !== 'none') {
                         cb.checked = checked;
                         if (checked) {
                             selectedSubjects.add(cb.value);
-                            parentLabel.classList.remove('bg-zinc-800/40');
-                            parentLabel.classList.add('bg-zinc-700/60');
+                            parentRow.classList.remove('bg-zinc-800/40');
+                            parentRow.classList.add('bg-zinc-700/60');
                         } else {
                             selectedSubjects.delete(cb.value);
-                            parentLabel.classList.remove('bg-zinc-700/60');
-                            parentLabel.classList.add('bg-zinc-800/40');
+                            parentRow.classList.remove('bg-zinc-700/60');
+                            parentRow.classList.add('bg-zinc-800/40');
                         }
                     }
                 });
