@@ -935,10 +935,18 @@
 
                         const horarioStr = course.horarios.map(h => `${h.dia.substring(0, 3)} ${formatTime12h(h.inicio)} - ${formatTime12h(h.fin)}`).join(', ');
 
+                        const teacherNameForIa = course.profesor.trim();
+                        const iaScoreVal = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherNameForIa] : null;
+                        let iaBadge = '';
+                        if (iaScoreVal !== undefined && iaScoreVal !== null) {
+                            iaBadge = `<span class="ml-2 text-[9px] bg-zinc-900 border border-zinc-800/80 text-zinc-400 px-1.5 py-0.2 rounded font-mono font-bold flex-shrink-0" title="Calificación de la base de datos IA">${iaScoreVal.toFixed(1)}</span>`;
+                        }
+
                         row.innerHTML = `
-                        <div class="col-span-4 flex items-center">
+                        <div class="col-span-4 flex items-center overflow-hidden">
                             <span class="rating-indicator w-1.5 h-1.5 rounded-full mr-3 bg-zinc-750 flex-shrink-0 transition-colors"></span>
-                            <span class="text-zinc-300 font-medium">${course.profesor}</span>
+                            <span class="text-zinc-300 font-medium truncate max-w-[70%]">${course.profesor}</span>
+                            ${iaBadge}
                         </div>
                         <div class="col-span-1 text-center font-mono text-zinc-400 text-xs font-semibold">${course.nrc}</div>
                         <div class="col-span-3 text-xs text-zinc-400 leading-relaxed">${horarioStr}</div>
@@ -1469,7 +1477,16 @@
                     const ratingLabel = ratingLabels[score] || ratingLabels[1];
                     const shortName = ratingShortNames[score] || ratingShortNames[1];
 
-                    const badge = `<span class="${ratingClass} border px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider">${shortName}</span>`;
+                    let displayName = shortName;
+                    if (ratingMode === 'ia') {
+                        const teacherName = course.profesor.trim();
+                        const iaScore = window.CALIFICACIONES_IA ? window.CALIFICACIONES_IA[teacherName] : null;
+                        if (iaScore !== undefined && iaScore !== null) {
+                            displayName = `${ratingLabels[score] || ratingLabels[1]} (${iaScore.toFixed(1)})`;
+                        }
+                    }
+
+                    const badge = `<span class="${ratingClass} border px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider">${displayName}</span>`;
 
                     tr.innerHTML = `
                         <td class="p-2 border-r border-zinc-800/20">
