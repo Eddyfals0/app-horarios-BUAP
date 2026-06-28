@@ -7,6 +7,8 @@
     <title>Optimizador de Horarios BUAP - Enterprise</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="carreras.js"></script>
+    <script src="calificaciones_ia.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -569,30 +571,10 @@
             // --- EVENT LISTENERS ---
             folderInput.addEventListener('change', handleFolderSelect);
 
-            // INICIO AUTOMÁTICO CON CACHE-BUSTING DINÁMICO
-            const version = new Date().getTime();
-            function loadScriptAsync(src) {
-                return new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    script.src = `${src}?v=${version}`;
-                    script.onload = () => resolve();
-                    script.onerror = () => reject(new Error(`Error loading ${src}`));
-                    document.head.appendChild(script);
-                });
-            }
-
+            // INICIO AUTOMÁTICO
             setTimeout(() => {
-                log("Cargando bases de datos de forma dinámica...");
-                Promise.all([
-                    loadScriptAsync('carreras.js'),
-                    loadScriptAsync('calificaciones_ia.js')
-                ]).then(() => {
-                    log("Bases de datos cargadas con éxito. Iniciando catálogo...");
-                    loadCatalog();
-                }).catch(err => {
-                    console.error("Error al cargar dinámicamente: ", err);
-                    loadCatalog(); // Fallback
-                });
+                log("Calling loadCatalog...");
+                loadCatalog();
             }, 300);
 
             // Reset
