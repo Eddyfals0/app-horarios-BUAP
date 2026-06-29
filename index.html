@@ -1631,12 +1631,12 @@
                 maxHour = Math.min(21, maxHour + 1);
 
                 const hours = Array.from({ length: maxHour - minHour }, (_, i) => i + minHour);
-                let html = `<div class="overflow-x-auto"><table class="w-full text-xs border-collapse" style="table-layout: fixed;"><thead><tr><th class="p-2 border border-zinc-800 bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wider text-[10px]" style="width: 60px;">Hora</th>`;
-                ['Lun', 'Mar', 'Mie', 'Jue', 'Vie'].forEach(d => html += `<th class="p-2 border border-zinc-800 bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wider text-[10px]" style="width: calc((100% - 60px) / 5);">${d}</th>`);
+                let html = `<div class="overflow-x-auto border border-zinc-800 rounded bg-zinc-950/10"><table class="w-full min-w-[760px] text-xs border-collapse" style="table-layout: fixed;"><thead><tr><th class="p-2 border border-zinc-800 bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wider text-[10px]" style="width: 65px;">Hora</th>`;
+                ['Lun', 'Mar', 'Mie', 'Jue', 'Vie'].forEach(d => html += `<th class="p-2 border border-zinc-800 bg-zinc-950 text-zinc-400 font-bold uppercase tracking-wider text-[10px]" style="width: calc((100% - 65px) / 5);">${d}</th>`);
                 html += `</tr></thead><tbody>`;
 
                 hours.forEach(h => {
-                    html += `<tr><td class="p-2 border border-zinc-800 text-center font-semibold text-zinc-500 text-[10px]" style="width: 60px;">${h}:00</td>`;
+                    html += `<tr><td class="p-2 border border-zinc-800 text-center font-semibold text-zinc-500 text-[10px]" style="width: 65px;">${h}:00</td>`;
                     ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'].forEach(d => {
                         let cell = '';
                         const matches = combination.flatMap(c => c.horarios.filter(sch => sch.dia === d && parseInt(sch.inicio.replace(':', '')) <= h * 100 && parseInt(sch.fin.replace(':', '')) > h * 100).map(sch => ({ ...c, salon: sch.salon })));
@@ -1681,24 +1681,24 @@
 
                 const ratingLabels = {
                     0: "Horrible",
-                    2: "Malo",
-                    1: "Nulo",
+                    1: "Malo",
+                    2: "Nulo",
                     3: "Regular",
                     4: "Bueno",
                     5: "Excelente"
                 };
                 const ratingClasses = {
                     0: "bg-red-950/80 border-red-800/60 text-red-400",
-                    2: "bg-red-800/80 border-red-700/60 text-red-100",
-                    1: "bg-zinc-200 border-zinc-300 text-zinc-950",
+                    1: "bg-red-800/80 border-red-700/60 text-red-100",
+                    2: "bg-zinc-200 border-zinc-300 text-zinc-950",
                     3: "bg-amber-600/90 border-amber-500/60 text-white",
                     4: "bg-emerald-700/90 border-emerald-600/60 text-emerald-50",
                     5: "bg-purple-800/90 border-purple-700/60 text-purple-50"
                 };
                 const ratingShortNames = {
                     0: "Horrible (H)",
-                    2: "Malo (M)",
-                    1: "Nulo (N)",
+                    1: "Malo (M)",
+                    2: "Nulo (N)",
                     3: "Regular (R)",
                     4: "Bueno (B)",
                     5: "Excelente (E)"
@@ -1712,9 +1712,9 @@
                     const mColor = subjectColorMap.get(course.materia) || colorPalette[0];
                     const score = course.calificacion_maestro;
 
-                    const ratingClass = ratingClasses[score] || ratingClasses[1];
-                    const ratingLabel = ratingLabels[score] || ratingLabels[1];
-                    const shortName = ratingShortNames[score] || ratingShortNames[1];
+                    const ratingClass = ratingClasses[score] || ratingClasses[2]; // Fallback to 2 (Nulo)
+                    const ratingLabel = ratingLabels[score] || ratingLabels[2];
+                    const shortName = ratingShortNames[score] || ratingShortNames[2];
 
                     let displayName = shortName;
                     if (ratingMode === 'ia') {
