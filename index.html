@@ -225,12 +225,10 @@
             <div class="bg-zinc-900 border border-zinc-800 rounded p-5 shadow-sm mb-4">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <span id="selected-count" class="font-bold text-[11px] uppercase tracking-wider text-zinc-400">0 materias seleccionadas</span>
-                    <div class="flex items-center gap-3.5 text-[11px] font-medium flex-wrap">
-                        <button id="select-all-btn" class="text-zinc-400 hover:text-zinc-200 transition-colors">Seleccionar Todas</button>
-                        <span class="text-zinc-850">|</span>
-                        <button id="deselect-all-btn" class="text-zinc-400 hover:text-zinc-200 transition-colors">Limpiar Selección</button>
-                        <span id="restore-subjects-separator" class="text-zinc-850 hidden">|</span>
-                        <button id="restore-hidden-subjects-btn" class="text-red-400/90 hover:text-red-300 transition-colors hidden">Restablecer Ocultas</button>
+                    <div class="flex items-center gap-2.5 text-[11px] font-medium flex-wrap">
+                        <button id="select-all-btn" class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded border border-zinc-800/80 bg-zinc-950/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 hover:border-zinc-700 transition-all duration-200 btn-animate">Seleccionar Todas</button>
+                        <button id="deselect-all-btn" class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded border border-zinc-800/80 bg-zinc-950/40 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 hover:border-zinc-700 transition-all duration-200 btn-animate">Limpiar Selección</button>
+                        <button id="restore-hidden-subjects-btn" class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded border border-red-950/60 bg-red-950/10 text-red-400/90 hover:text-red-300 hover:bg-red-950/30 hover:border-red-900 transition-all duration-200 btn-animate hidden">Restablecer Ocultas</button>
                         <div class="group relative inline-block">
                             <button type="button" class="w-4.5 h-4.5 flex items-center justify-center rounded-full bg-zinc-950 hover:bg-zinc-900 border border-zinc-850 hover:border-zinc-750 text-zinc-450 hover:text-zinc-250 text-[10px] font-bold transition-all focus:outline-none cursor-help">?</button>
                             <div class="absolute bottom-full right-0 mb-2 w-64 p-3 bg-zinc-950 text-zinc-350 text-[11px] rounded shadow-xl border border-zinc-800 opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50 leading-relaxed font-normal normal-case text-left">
@@ -635,15 +633,24 @@
             // Generacion
             generateBtn.addEventListener('click', handleGenerateCombinations);
 
+            // Reordenar reactivamente al cambiar clasificación
+            document.querySelectorAll('input[name="sort-order"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (window.currentCombinations && window.currentCombinations.length > 0) {
+                        displayResults(window.currentCombinations);
+                    }
+                });
+            });
+
             function mapIaScoreToRatingVal(score) {
-                if (score === undefined || score === null) return "1"; // Nulo
+                if (score === undefined || score === null) return "2"; // Nulo es 2
                 const num = parseFloat(score);
-                if (isNaN(num)) return "1";
-                if (num < 5.0) return "0"; // Horrible
-                if (num >= 5.0 && num < 6.0) return "2"; // Malo
-                if (num >= 6.0 && num < 8.0) return "3"; // Regular
-                if (num >= 8.0 && num < 9.0) return "4"; // Bueno
-                return "5"; // Excelente
+                if (isNaN(num)) return "2";
+                if (num < 5.0) return "0"; // Horrible es 0
+                if (num >= 5.0 && num < 6.0) return "1"; // Malo es 1
+                if (num >= 6.0 && num < 8.0) return "3"; // Regular es 3
+                if (num >= 8.0 && num < 9.0) return "4"; // Bueno es 4
+                return "5"; // Excelente es 5
             }
 
             function updateRowRatingUI(row, val) {
@@ -658,8 +665,8 @@
                         if (pillVal === '5') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-purple-800/90 text-purple-50 border border-purple-600/50";
                         else if (pillVal === '4') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-emerald-700/90 text-emerald-50 border border-emerald-600/50";
                         else if (pillVal === '3') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-amber-600/90 text-white border border-amber-500/50";
-                        else if (pillVal === '1') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-zinc-200 text-zinc-950 border border-zinc-300";
-                        else if (pillVal === '2') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-red-800/80 text-red-100 border border-red-700/50";
+                        else if (pillVal === '2') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-zinc-200 text-zinc-950 border border-zinc-300";
+                        else if (pillVal === '1') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-red-800/80 text-red-100 border border-red-700/50";
                         else if (pillVal === '0') pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all bg-red-950/80 text-red-400 border border-red-900/40";
                     } else {
                         pill.className = "rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-550 hover:text-zinc-300 hover:bg-zinc-800/40";
@@ -676,10 +683,10 @@
                 } else if (val === '3') {
                     ratingIndicator.className = "rating-indicator h-1.5 w-1.5 rounded-full mr-3 flex-shrink-0 transition-colors bg-amber-500";
                     ratingIndicator.title = "Regular";
-                } else if (val === '1') {
+                } else if (val === '2') {
                     ratingIndicator.className = "rating-indicator h-1.5 w-1.5 rounded-full mr-3 flex-shrink-0 transition-colors bg-zinc-400";
                     ratingIndicator.title = "Nulo";
-                } else if (val === '2') {
+                } else if (val === '1') {
                     ratingIndicator.className = "rating-indicator h-1.5 w-1.5 rounded-full mr-3 flex-shrink-0 transition-colors bg-red-500";
                     ratingIndicator.title = "Malo";
                 } else if (val === '0') {
@@ -702,7 +709,7 @@
                         
                         const course = JSON.parse(row.dataset.course);
                         const key = `${course.materia}-${course.profesor}-${course.nrc}`;
-                        const val = userManualRatings[key] || "1";
+                        const val = userManualRatings[key] || "2"; // Default Nulo
                         
                         ratingGroup.dataset.value = val;
                         updateRowRatingUI(row, val);
@@ -895,7 +902,9 @@
             // --- SELECCIÓN DE MATERIAS (UI) ---
             function renderSubjectSelection(data) {
                 checkboxContainer.innerHTML = '';
-                selectedSubjects.clear();
+                
+                // Remove hidden subjects from current active selectedSubjects
+                hiddenSubjects.forEach(sub => selectedSubjects.delete(sub));
                 
                 // Clear old schedules container cleanly on load/re-render to prevent sync bugs
                 const resultsContainer = document.getElementById('results-container');
@@ -912,7 +921,13 @@
 
                 uniqueSubjects.forEach(subject => {
                     const itemDiv = document.createElement('div');
-                    itemDiv.className = "subject-item-row flex items-center justify-between p-2.5 rounded-sm bg-zinc-800/40 hover:bg-zinc-800/70 transition-all duration-200 group/item";
+                    const isChecked = selectedSubjects.has(subject);
+                    
+                    if (isChecked) {
+                        itemDiv.className = "subject-item-row flex items-center justify-between p-2.5 rounded-sm bg-zinc-700/30 border border-zinc-600/50 hover:bg-zinc-700/40 shadow-[0_0_12px_rgba(113,113,122,0.1)] transition-all duration-200 group/item";
+                    } else {
+                        itemDiv.className = "subject-item-row flex items-center justify-between p-2.5 rounded-sm bg-zinc-800/40 border border-zinc-900/60 hover:bg-zinc-800/70 hover:border-zinc-800 transition-all duration-200 group/item";
+                    }
 
                     const label = document.createElement('label');
                     label.className = "flex items-center gap-3 cursor-pointer flex-grow select-none";
@@ -920,15 +935,16 @@
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.value = subject;
-                    checkbox.className = "form-checkbox h-4 w-4 text-zinc-650 rounded bg-zinc-950 border-zinc-800 focus:ring-zinc-700/30";
+                    checkbox.checked = isChecked;
+                    checkbox.className = "form-checkbox h-4 w-4 text-zinc-650 rounded bg-zinc-950 border-zinc-800 focus:ring-zinc-700/30 cursor-pointer";
 
                     checkbox.addEventListener('change', (e) => {
                         if (e.target.checked) {
                             selectedSubjects.add(subject);
-                            itemDiv.classList.replace('bg-zinc-800/40', 'bg-zinc-700/60');
+                            itemDiv.className = "subject-item-row flex items-center justify-between p-2.5 rounded-sm bg-zinc-700/30 border border-zinc-600/50 hover:bg-zinc-700/40 shadow-[0_0_12px_rgba(113,113,122,0.1)] transition-all duration-200 group/item";
                         } else {
                             selectedSubjects.delete(subject);
-                            itemDiv.classList.replace('bg-zinc-700/60', 'bg-zinc-800/40');
+                            itemDiv.className = "subject-item-row flex items-center justify-between p-2.5 rounded-sm bg-zinc-800/40 border border-zinc-900/60 hover:bg-zinc-800/70 hover:border-zinc-800 transition-all duration-200 group/item";
                         }
                         updateCount();
                     });
@@ -1034,12 +1050,10 @@
                         cb.checked = checked;
                         if (checked) {
                             selectedSubjects.add(cb.value);
-                            parentRow.classList.remove('bg-zinc-800/40');
-                            parentRow.classList.add('bg-zinc-700/60');
+                            parentRow.className = "subject-item-row flex items-center justify-between p-2.5 rounded-sm bg-zinc-700/30 border border-zinc-600/50 hover:bg-zinc-700/40 shadow-[0_0_12px_rgba(113,113,122,0.1)] transition-all duration-200 group/item";
                         } else {
                             selectedSubjects.delete(cb.value);
-                            parentRow.classList.remove('bg-zinc-700/60');
-                            parentRow.classList.add('bg-zinc-800/40');
+                            parentRow.className = "subject-item-row flex items-center justify-between p-2.5 rounded-sm bg-zinc-800/40 border border-zinc-900/60 hover:bg-zinc-800/70 hover:border-zinc-800 transition-all duration-200 group/item";
                         }
                     }
                 });
@@ -1156,13 +1170,13 @@
 
                         <div class="flex justify-between items-center gap-2 lg:justify-center lg:col-span-3">
                             <span class="text-zinc-550 text-xs font-semibold uppercase tracking-wider lg:hidden">Calificación:</span>
-                            <div class="rating-btn-group flex border border-zinc-800 rounded bg-zinc-950/90 p-0.5" data-value="1">
-                                <button type="button" data-val="0" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Horrible">H</button>
-                                <button type="button" data-val="2" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Malo">M</button>
-                                <button type="button" data-val="1" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Nulo (Por defecto)">N</button>
-                                <button type="button" data-val="3" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Regular">R</button>
-                                <button type="button" data-val="4" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Bueno">B</button>
-                                <button type="button" data-val="5" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-500 hover:text-zinc-200" title="Excelente">E</button>
+                            <div class="rating-btn-group flex border border-zinc-800 rounded bg-zinc-950/90 p-0.5" data-value="2">
+                                <button type="button" data-val="0" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-550 hover:text-zinc-200" title="Horrible">H</button>
+                                <button type="button" data-val="1" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-550 hover:text-zinc-200" title="Malo">M</button>
+                                <button type="button" data-val="2" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-550 hover:text-zinc-200" title="Nulo (Por defecto)">N</button>
+                                <button type="button" data-val="3" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-550 hover:text-zinc-200" title="Regular">R</button>
+                                <button type="button" data-val="4" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-550 hover:text-zinc-200" title="Bueno">B</button>
+                                <button type="button" data-val="5" class="rating-pill px-2 py-0.5 text-[9px] font-bold rounded-sm transition-all text-zinc-550 hover:text-zinc-200" title="Excelente">E</button>
                             </div>
                         </div>
                         
@@ -1180,7 +1194,7 @@
                         const ratingPills = ratingGroup.querySelectorAll('.rating-pill');
 
                         // Get initial value based on active mode
-                        let initialVal = "1"; // Default Manual
+                        let initialVal = "2"; // Default Manual (Nulo)
                         const key = `${course.materia}-${course.profesor}-${course.nrc}`;
                         
                         if (ratingMode === 'ia') {
@@ -1193,7 +1207,7 @@
                                 initialVal = mapIaScoreToRatingVal(iaScore);
                             }
                         } else {
-                            initialVal = userManualRatings[key] || "1";
+                            initialVal = userManualRatings[key] || "2";
                         }
                         ratingGroup.dataset.value = initialVal;
                         
@@ -1392,7 +1406,7 @@
                     const materia = card.querySelector('h2').textContent;
                     const options = [];
                     card.querySelectorAll('.teacher-option').forEach(row => {
-                        if (row.style.display !== 'none') {
+                        if (row.style.display !== 'none' && !row.classList.contains('excluded-option')) {
                             const c = JSON.parse(row.dataset.course);
                             c.calificacion_maestro = parseInt(row.querySelector('.rating-btn-group').dataset.value);
                             options.push(c);
@@ -1490,7 +1504,9 @@
                     if (avgRating >= 4.5) ratingLabel = 'Excelente';
                     else if (avgRating >= 3.5) ratingLabel = 'Bueno';
                     else if (avgRating >= 2.5) ratingLabel = 'Regular';
-                    else if (avgRating >= 1.5) ratingLabel = 'Malo';
+                    else if (avgRating >= 1.5) ratingLabel = 'Nulo';
+                    else if (avgRating >= 0.5) ratingLabel = 'Malo';
+                    else ratingLabel = 'Horrible';
 
                     return { combo, avgRating, compactness, score, ratingLabel };
                 });
